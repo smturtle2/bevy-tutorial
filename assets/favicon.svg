@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Rust + Bevy Tutorial">
+  <rect width="64" height="64" rx="12" fill="#fff0e8"/>
+  <circle cx="32" cy="32" r="19" fill="#ffffff" stroke="#e94712" stroke-width="6"/>
+  <path d="M21 23h14c7 0 11 3 11 9 0 3-1 5-4 7l6 9H37l-5-8h-2v8h-9V23Zm9 8v4h5c1 0 2-1 2-2s-1-2-2-2h-5Z" fill="#142033"/>
+  <circle cx="15" cy="15" r="4" fill="#2376d5"/>
+  <circle cx="49" cy="49" r="4" fill="#2376d5"/>
+</svg>
