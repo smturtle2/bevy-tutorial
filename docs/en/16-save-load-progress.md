@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Game states](15-game-states.md) · [Next: Complete RPG slice →](17-complete-rpg-slice.md)
+[Index](index.md) · [← Previous: Game states](15-game-states.md) · [Next: Integrated RPG slice →](17-complete-rpg-slice.md)
 
 </div>
 
@@ -212,6 +212,6 @@ Then update `Default`, `update_text`, and any save display you want. Expected re
 
 <div align="center">
 
-[← Previous: Game states](15-game-states.md) · [Index](index.md) · [Next: Complete RPG slice →](17-complete-rpg-slice.md)
+[← Previous: Game states](15-game-states.md) · [Index](index.md) · [Next: Integrated RPG slice →](17-complete-rpg-slice.md)
 
 </div>

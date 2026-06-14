@@ -12,7 +12,7 @@ The tutorial targets:
 - Rust edition: `2024`
 - Bevy: `0.18.1`
 
-![Complete RPG slice preview](assets/screenshots/complete-rpg-slice-preview.png)
+![Integrated RPG slice preview](assets/screenshots/complete-rpg-slice-preview.png)
 
 ## Run The Bevy Project
 
@@ -40,6 +40,11 @@ cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
 cargo run --example 17_complete_rpg_slice
+cargo run --example 18_projectiles
+cargo run --example 19_inventory
+cargo run --example 20_dialogue
+cargo run --example 21_audio_events
+cargo run --example 22_scene_loading
 ```
 
 ## Run The Site Locally

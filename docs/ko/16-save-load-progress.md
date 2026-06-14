@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 게임 상태](15-game-states.md) · [다음: 완성된 RPG 예제 →](17-complete-rpg-slice.md)
+[목차](index.md) · [← 이전: 게임 상태](15-game-states.md) · [다음: 통합 RPG 예제 →](17-complete-rpg-slice.md)
 
 </div>
 
@@ -212,6 +212,6 @@ gold: u32,
 
 <div align="center">
 
-[← 이전: 게임 상태](15-game-states.md) · [목차](index.md) · [다음: 완성된 RPG 예제 →](17-complete-rpg-slice.md)
+[← 이전: 게임 상태](15-game-states.md) · [목차](index.md) · [다음: 통합 RPG 예제 →](17-complete-rpg-slice.md)
 
 </div>

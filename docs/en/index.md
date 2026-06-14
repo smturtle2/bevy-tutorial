@@ -4,17 +4,17 @@
 
 [Repository root](../../README.md) · [Korean](../ko/index.md)
 
-<code>Rust 2024</code> · <code>Bevy 0.18.1</code> · <code>18 runnable examples</code> · <code>English/한국어</code>
+<code>Rust 2024</code> · <code>Bevy 0.18.1</code> · <code>23 chapters</code> · <code>22 runnable examples</code> · <code>English/한국어</code>
 
 </div>
 
 ---
 
-This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, then grows into movement, ECS data design, plugins, assets, camera follow, waves, hitboxes, UI, animation, map geometry, game states, and save/load.
+This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, then grows into movement, ECS data design, plugins, assets, camera follow, waves, hitboxes, UI, animation, map geometry, game states, save/load, projectiles, inventory, dialogue, audio events, and scene loading.
 
 You are not reading a reference manual. You are building one working slice at a time, running it, changing one rule, and then learning the Rust and Bevy concepts that made that slice work.
 
-![Complete RPG tutorial preview](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+![Integrated RPG tutorial preview](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
 ## How This Tutorial Teaches
 
@@ -53,7 +53,8 @@ This tutorial uses its own code and its own RPG project, but it keeps the same p
 | Presentation | 6 | Image assets, camera follow, and world-space text |
 | RPG foundation | 7 | A compact playable arena with movement, enemies, pickups, health, score, and HUD |
 | RPG systems | 8-16 | Camera smoothing, waves, attacks, sprite assets, fixed HUD, animation, map collision, states, save/load |
-| Integration | 17 | A small complete RPG slice using the systems from the track |
+| Core integration | 17 | A playable RPG checkpoint using the combat-loop systems from the track |
+| RPG content systems | 18-22 | Projectiles, inventory, dialogue, audio events, and scene loading |
 
 ## Chapters
 
@@ -74,7 +75,12 @@ This tutorial uses its own code and its own RPG project, but it keeps the same p
 14. [Handmade map geometry](14-handmade-map-geometry.md)
 15. [Game states](15-game-states.md)
 16. [Save and load progress](16-save-load-progress.md)
-17. [Complete RPG slice](17-complete-rpg-slice.md)
+17. [Integrated RPG slice](17-complete-rpg-slice.md)
+18. [Projectiles](18-projectiles.md)
+19. [Inventory](19-inventory.md)
+20. [Dialogue](20-dialogue.md)
+21. [Audio events](21-audio-events.md)
+22. [Scene loading](22-scene-loading.md)
 
 ## Run The Examples
 
@@ -98,6 +104,11 @@ cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
 cargo run --example 17_complete_rpg_slice
+cargo run --example 18_projectiles
+cargo run --example 19_inventory
+cargo run --example 20_dialogue
+cargo run --example 21_audio_events
+cargo run --example 22_scene_loading
 ```
 
 ## Core Mental Model

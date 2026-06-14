@@ -31,7 +31,12 @@ const chapters = [
   chapter(14, "14-handmade-map-geometry", "Handmade Map Geometry", "직접 만든 맵 구조", "RPG Features", "RPG 기능", "cargo run --example 14_handmade_map_geometry", "Build a small map from explicit geometry and collision bounds.", "직접 작성한 맵 구조와 충돌 범위로 작은 맵을 만듭니다."),
   chapter(15, "15-game-states", "Game States", "게임 상태", "RPG Features", "RPG 기능", "cargo run --example 15_game_states", "Model menu, playing, paused, and game over as Bevy states.", "메뉴, 플레이 중, 일시정지, 게임 오버를 Bevy 상태로 모델링합니다."),
   chapter(16, "16-save-load-progress", "Save And Load Progress", "진행도 저장과 불러오기", "RPG Features", "RPG 기능", "cargo run --example 16_save_load_progress", "Persist explicit progress data instead of serializing the whole world.", "전체 월드가 아니라 명시적인 진행 데이터를 저장합니다."),
-  chapter(17, "17-complete-rpg-slice", "Complete RPG Slice", "완성된 RPG 예제", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the tutorial systems together into a complete small RPG slice.", "튜토리얼 시스템을 합쳐 완성된 작은 RPG 예제를 만듭니다."),
+  chapter(17, "17-complete-rpg-slice", "Integrated RPG Slice", "통합 RPG 예제", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the combat-loop systems together into a playable RPG checkpoint.", "전투 루프 시스템을 합쳐 플레이 가능한 RPG 체크포인트를 만듭니다."),
+  chapter(18, "18-projectiles", "Projectiles", "발사체", "RPG Content", "RPG 콘텐츠", "cargo run --example 18_projectiles", "Model ranged attacks as moving entities with damage, collision, and lifetime.", "원거리 공격을 피해량, 충돌, 수명을 가진 움직이는 엔티티로 모델링합니다."),
+  chapter(19, "19-inventory", "Inventory", "인벤토리", "RPG Content", "RPG 콘텐츠", "cargo run --example 19_inventory", "Collect world pickups into explicit inventory data and update the HUD.", "맵 위 아이템을 명시적인 인벤토리 데이터에 담고 HUD를 갱신합니다."),
+  chapter(20, "20-dialogue", "Dialogue", "대화", "RPG Content", "RPG 콘텐츠", "cargo run --example 20_dialogue", "Start NPC conversations, advance lines, and render dialogue UI.", "NPC와 대화를 시작하고 문장을 넘기며 대화 UI를 표시합니다."),
+  chapter(21, "21-audio-events", "Audio Events", "오디오 이벤트", "RPG Content", "RPG 콘텐츠", "cargo run --example 21_audio_events", "Decouple gameplay from sound playback with audio events.", "오디오 이벤트로 게임플레이와 소리 재생을 분리합니다."),
+  chapter(22, "22-scene-loading", "Scene Loading", "씬 로딩", "RPG Content", "RPG 콘텐츠", "cargo run --example 22_scene_loading", "Load level data from files and spawn scene-owned entities.", "파일에서 레벨 데이터를 읽어 씬 소유 엔티티를 생성합니다."),
 ];
 
 const chapterThumbnails = {
@@ -53,6 +58,11 @@ const chapterThumbnails = {
   "15-game-states": "screenshots/ch15-game-state-menu.png",
   "16-save-load-progress": "screenshots/ch16-save-load-progress.png",
   "17-complete-rpg-slice": "screenshots/ch17-complete-rpg-gameplay.png",
+  "18-projectiles": "screenshots/ch18-projectiles.png",
+  "19-inventory": "screenshots/ch19-inventory.png",
+  "20-dialogue": "screenshots/ch20-dialogue.png",
+  "21-audio-events": "screenshots/ch21-audio-events.png",
+  "22-scene-loading": "screenshots/ch22-scene-loading.png",
 };
 
 const copy = {
@@ -79,6 +89,10 @@ const copy = {
     communityText: "It is written for learners who want to inspect real Bevy code and change it. Issues, corrections, and improvements are welcome.",
     contribute: "Contribute on GitHub",
     runThis: "Run this chapter",
+    chapterCount: "23 chapters",
+    exampleCount: "22 examples",
+    previewLabel: "RPG tutorial preview",
+    previewAlt: "Integrated RPG tutorial preview",
     onThisPage: "On this page",
     allChapters: "All chapters",
     previous: "Previous",
@@ -100,7 +114,7 @@ const copy = {
     start: "학습 시작",
     viewExamples: "예제 보기",
     heroTitle: "<strong>Rust</strong> + Bevy 튜토리얼",
-    heroLead: "플레이할 수 있는 작은 Bevy RPG를 만들면서 Rust를 배웁니다. 직접 실행해 볼 수 있는 코드와 분명한 설계를 원하는 학습자를 위한 커뮤니티 제작 튜토리얼입니다.",
+    heroLead: "작은 Bevy RPG를 직접 만들고 실행하며 Rust와 Bevy를 함께 익힙니다.",
     heroPoints: [
       "Bevy 코드에 필요한 Rust 기초를 등장 순서에 맞춰 설명합니다.",
       "핵심 RPG 시스템마다 장과 실행 가능한 예제가 있습니다.",
@@ -114,6 +128,10 @@ const copy = {
     communityText: "실제 Bevy 코드를 읽고 직접 바꿔보고 싶은 학습자를 위해 작성했습니다. 이슈, 수정, 개선 제안을 환영합니다.",
     contribute: "GitHub에서 기여하기",
     runThis: "이 장 실행",
+    chapterCount: "23장",
+    exampleCount: "예제 22개",
+    previewLabel: "RPG 튜토리얼 미리보기",
+    previewAlt: "통합 RPG 튜토리얼 미리보기",
     onThisPage: "이 페이지",
     allChapters: "전체 목차",
     previous: "이전",
@@ -239,7 +257,7 @@ function renderHome(lang, assetTags) {
   const t = copy[lang];
   const heroImage = `${base}assets/screenshots/ch17-complete-rpg-gameplay.png`;
   const features = [
-    [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만들며 배우기", lang === "en" ? "Build an RPG step by step with complete examples." : "완성된 예제를 따라 RPG를 단계별로 만듭니다."],
+    [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만들며 배우기", lang === "en" ? "Build an RPG step by step with runnable examples." : "실행 가능한 예제를 따라 RPG를 단계별로 만듭니다."],
     [asset("enemy.png"), lang === "en" ? "Bevy patterns" : "Bevy 패턴", lang === "en" ? "Learn ECS, plugins, states, assets, UI, and saving." : "ECS, 플러그인, 상태, 에셋, UI, 저장을 배웁니다."],
     [asset("slash.png"), lang === "en" ? "Rust in context" : "맥락 속 Rust", lang === "en" ? "Rust concepts are tied directly to Bevy code." : "Rust 개념을 Bevy 코드와 바로 연결합니다."],
     [asset("gem.png"), lang === "en" ? "Community-shaped" : "커뮤니티 문서", lang === "en" ? "Practical, inspectable, and open to corrections." : "실용적인 예제를 공개하고, 검토와 개선 제안을 받습니다."],
@@ -262,11 +280,12 @@ function renderHome(lang, assetTags) {
           <div class="version-row">
             <span class="chip rust">Rust 2024</span>
             <span class="chip bevy">Bevy 0.18.1</span>
-            <span class="chip">18 chapters</span>
+            <span class="chip">${escapeHtml(t.chapterCount)}</span>
+            <span class="chip">${escapeHtml(t.exampleCount)}</span>
           </div>
         </div>
-        <div class="preview-panel" aria-label="RPG tutorial preview">
-          <img src="${heroImage}" alt="Complete RPG tutorial preview" />
+        <div class="preview-panel" aria-label="${escapeHtml(t.previewLabel)}">
+          <img src="${heroImage}" alt="${escapeHtml(t.previewAlt)}" />
           <div class="preview-hud">
             <span>HP 28/28 <i class="hud-bar" style="--value: 92%"></i></span>
             <span>LV 3 <i class="hud-bar" style="--value: 62%"></i></span>

@@ -1,8 +1,8 @@
-# 17. Complete RPG Slice
+# 17. Integrated RPG Slice
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Save and load progress](16-save-load-progress.md) · [Next: Contribute →](https://github.com/smturtle2/bevy-tutorial)
+[Index](index.md) · [← Previous: Save and load progress](16-save-load-progress.md) · [Next: Projectiles →](18-projectiles.md)
 
 </div>
 
@@ -10,9 +10,9 @@
 
 ## Outcome
 
-At the end of this chapter, the previous systems are integrated into one small RPG slice: menu, gameplay, pause, game over, image assets, animated player, smooth camera, enemy waves, attack hitboxes, map collision, screen-space HUD, and progress saving.
+At the end of this chapter, the combat-loop systems are integrated into one small RPG slice: menu, gameplay, pause, game over, image assets, animated player, smooth camera, enemy waves, attack hitboxes, map collision, screen-space HUD, and progress saving.
 
-![The complete RPG slice combines the tutorial systems into one playable example.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+![The integrated RPG slice combines the tutorial systems into one playable example.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
 ## Run
 
@@ -35,7 +35,7 @@ R         restart from game over
 
 ## Build Step 1: Keep The Integration Pipeline Explicit
 
-The final example has more systems, so the frame phases are explicit:
+The integrated example has more systems, so the frame phases are explicit:
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -60,7 +60,7 @@ That order is a game design decision. For example, collision should happen after
 
 ## Build Step 2: Store Shared Assets Once
 
-The final example stores image handles and the player atlas layout in a resource:
+The integrated example stores image handles and the player atlas layout in a resource:
 
 ```rust
 #[derive(Resource, Clone)]
@@ -150,7 +150,7 @@ Gameplay systems run only while playing:
 
 Menu, pause, and game-over systems have their own state gates.
 
-This is how the final example avoids movement while paused and avoids spawning enemies in the menu.
+This is how the integrated example avoids movement while paused and avoids spawning enemies in the menu.
 
 ## Build Step 6: Combine Collision Rules
 
@@ -202,11 +202,11 @@ if keyboard.just_pressed(KeyCode::F5) {
 }
 ```
 
-The final game does not serialize temporary enemies, hitboxes, or UI. It saves long-lived progress.
+This example does not serialize temporary enemies, hitboxes, or UI. It saves long-lived progress.
 
 ## Rust Lens
 
-The final example combines the Rust concepts from the track:
+The integrated example combines the Rust concepts from the track:
 
 ```text
 struct               components, resources, bundles
@@ -235,7 +235,7 @@ commands create and remove entities
 queries apply behavior to matching entities
 ```
 
-This is the complete architecture for the tutorial track. The systems from earlier chapters now run together inside one game loop.
+This is the first full combat-loop architecture in the track. The systems from earlier chapters now run together inside one game loop.
 
 ## Check
 
@@ -270,9 +270,9 @@ Vec3::new(0.0, 210.0, 3.0),
 
 Expected result: the new gem appears in the map, uses existing collision, increases score when collected, and requires no new collection system.
 
-## Main Track Completion
+## Core RPG Checkpoint
 
-This tutorial includes all of these systems in the main track:
+This checkpoint combines the core combat-loop systems from the track so far:
 
 ```text
 camera follow      smooth camera movement that follows the player
@@ -286,12 +286,12 @@ game states        menu, playing, paused, and game over
 save/load          best score and unlocked wave persistence
 ```
 
-The final chapter connects these systems in one frame order and shows how each responsibility stays clear.
+The next main-track chapters keep building on the same ECS contract with projectiles, inventory, dialogue, audio events, and scene loading.
 
 ---
 
 <div align="center">
 
-[← Previous: Save and load progress](16-save-load-progress.md) · [Index](index.md) · [Contribute →](https://github.com/smturtle2/bevy-tutorial)
+[← Previous: Save and load progress](16-save-load-progress.md) · [Index](index.md) · [Next: Projectiles →](18-projectiles.md)
 
 </div>

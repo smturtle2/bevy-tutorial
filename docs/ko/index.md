@@ -4,17 +4,17 @@
 
 [저장소](../../README.md) · [English](../en/index.md)
 
-<code>Rust 2024</code> · <code>Bevy 0.18.1</code> · <code>실행 가능한 예제 18개</code> · <code>English/한국어</code>
+<code>Rust 2024</code> · <code>Bevy 0.18.1</code> · <code>23장</code> · <code>실행 가능한 예제 22개</code> · <code>English/한국어</code>
 
 </div>
 
 ---
 
-이 튜토리얼은 작은 탑다운 RPG를 만들면서 Rust와 Bevy를 같이 익히는 커뮤니티 문서입니다. 처음에는 창 하나와 스프라이트 하나로 시작하고, 점점 이동, ECS 데이터 설계, 플러그인, 에셋, 카메라 추적, 적 웨이브, 공격 히트박스, UI, 애니메이션, 맵 구조, 게임 상태, 저장/불러오기까지 붙여갑니다.
+이 튜토리얼은 작은 탑다운 RPG를 만들면서 Rust와 Bevy를 같이 익히는 커뮤니티 문서입니다. 처음에는 창 하나와 스프라이트 하나로 시작하고, 점점 이동, ECS 데이터 설계, 플러그인, 에셋, 카메라 추적, 적 웨이브, 공격 히트박스, UI, 애니메이션, 맵 구조, 게임 상태, 저장/불러오기, 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩까지 붙여갑니다.
 
 레퍼런스 문서를 읽는 흐름이 아닙니다. 매 장마다 작게 만들고, 실행해 보고, 규칙 하나를 바꿔 보고, 그 코드에 들어간 Rust와 Bevy 개념을 다시 짚는 방식으로 진행합니다.
 
-![완성된 RPG 튜토리얼 미리보기](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+![통합 RPG 튜토리얼 미리보기](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
 ## 진행 방식
 
@@ -53,7 +53,8 @@
 | 화면 표현 | 6 | 이미지 에셋, 카메라 추적, 월드 공간 텍스트 |
 | RPG 기초 | 7 | 이동, 적, 수집, 체력, 점수, HUD가 있는 작은 아레나 |
 | RPG 시스템 | 8-16 | 부드러운 카메라, 웨이브, 공격, 스프라이트, 고정 HUD, 애니메이션, 맵 충돌, 상태, 저장 |
-| 통합 | 17 | 앞에서 만든 시스템을 합친 작은 RPG 예제 |
+| 핵심 통합 | 17 | 전투 루프 시스템을 합친 플레이 가능한 RPG 체크포인트 |
+| RPG 콘텐츠 시스템 | 18-22 | 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩 |
 
 ## 목차
 
@@ -74,7 +75,12 @@
 14. [직접 만든 맵 구조](14-handmade-map-geometry.md)
 15. [게임 상태](15-game-states.md)
 16. [진행도 저장과 불러오기](16-save-load-progress.md)
-17. [완성된 RPG 예제](17-complete-rpg-slice.md)
+17. [통합 RPG 예제](17-complete-rpg-slice.md)
+18. [발사체](18-projectiles.md)
+19. [인벤토리](19-inventory.md)
+20. [대화](20-dialogue.md)
+21. [오디오 이벤트](21-audio-events.md)
+22. [씬 로딩](22-scene-loading.md)
 
 ## 예제 실행
 
@@ -98,6 +104,11 @@ cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
 cargo run --example 17_complete_rpg_slice
+cargo run --example 18_projectiles
+cargo run --example 19_inventory
+cargo run --example 20_dialogue
+cargo run --example 21_audio_events
+cargo run --example 22_scene_loading
 ```
 
 ## 핵심 감각
