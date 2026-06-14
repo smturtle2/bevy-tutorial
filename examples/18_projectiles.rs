@@ -1,6 +1,13 @@
 use bevy::prelude::*;
 use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 
+mod tutorial_visuals;
+use tutorial_visuals::{
+    TutorialSprites, enemy_sprite, player_sprite, projectile_sprite, slash_sprite,
+    spawn_arena_backdrop, spawn_camera, spawn_health_bar, spawn_impact_burst, spawn_status_panel,
+    spawn_world_label,
+};
+
 const PLAYER_SPEED: f32 = 280.0;
 const PROJECTILE_SPEED: f32 = 520.0;
 const PROJECTILE_LIFETIME: f32 = 0.9;
@@ -103,13 +110,13 @@ struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    fn new() -> Self {
+    fn new(assets: &TutorialSprites) -> Self {
         Self {
             gameplay: GameplayEntity,
             player: Player,
-            body: BodyBundle::new(Vec3::new(-260.0, 0.0, 2.0), PLAYER_SIZE),
+            body: BodyBundle::new(Vec3::new(-260.0, -120.0, 3.0), PLAYER_SIZE),
             facing: Facing(Vec2::X),
-            sprite: Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
+            sprite: player_sprite(assets),
         }
     }
 }
@@ -124,13 +131,16 @@ struct EnemyBundle {
 }
 
 impl EnemyBundle {
-    fn new(position: Vec3) -> Self {
+    fn new(position: Vec3, current_health: i32, assets: &TutorialSprites) -> Self {
         Self {
             gameplay: GameplayEntity,
             enemy: Enemy,
             body: BodyBundle::new(position, ENEMY_SIZE),
-            health: Health { current: 3, max: 3 },
-            sprite: Sprite::from_color(Color::srgb(0.90, 0.24, 0.30), ENEMY_SIZE),
+            health: Health {
+                current: current_health,
+                max: 3,
+            },
+            sprite: enemy_sprite(assets),
         }
     }
 }
@@ -145,26 +155,39 @@ struct ProjectileBundle {
 
 impl ProjectileBundle {
     fn new(position: Vec3, direction: Vec2) -> Self {
+        Self::with_velocity(
+            position,
+            direction,
+            direction * PROJECTILE_SPEED,
+            PROJECTILE_LIFETIME,
+        )
+    }
+
+    fn showcase(position: Vec3, direction: Vec2) -> Self {
+        Self::with_velocity(position, direction, Vec2::ZERO, 30.0)
+    }
+
+    fn with_velocity(position: Vec3, direction: Vec2, velocity: Vec2, lifetime: f32) -> Self {
         let angle = direction.y.atan2(direction.x);
 
         Self {
             gameplay: GameplayEntity,
             projectile: Projectile {
-                lifetime: Timer::from_seconds(PROJECTILE_LIFETIME, TimerMode::Once),
+                lifetime: Timer::from_seconds(lifetime, TimerMode::Once),
                 damage: 1,
             },
             body: BodyBundle {
                 body: Body {
                     half_size: PROJECTILE_SIZE / 2.0,
                 },
-                velocity: Velocity(direction * PROJECTILE_SPEED),
+                velocity: Velocity(velocity),
                 transform: Transform {
                     translation: position,
                     rotation: Quat::from_rotation_z(angle),
                     ..default()
                 },
             },
-            sprite: Sprite::from_color(Color::srgb(1.0, 0.82, 0.28), PROJECTILE_SIZE),
+            sprite: projectile_sprite(),
         }
     }
 }
@@ -179,17 +202,31 @@ struct AttackHitboxBundle {
 }
 
 impl AttackHitboxBundle {
-    fn new(position: Vec3, direction: Vec2) -> Self {
+    fn new(position: Vec3, direction: Vec2, assets: &TutorialSprites) -> Self {
+        Self::with_lifetime(position, direction, HITBOX_LIFETIME, 1, assets)
+    }
+
+    fn showcase(position: Vec3, direction: Vec2, assets: &TutorialSprites) -> Self {
+        Self::with_lifetime(position, direction, 30.0, 0, assets)
+    }
+
+    fn with_lifetime(
+        position: Vec3,
+        direction: Vec2,
+        lifetime: f32,
+        damage: i32,
+        assets: &TutorialSprites,
+    ) -> Self {
         Self {
             gameplay: GameplayEntity,
             hitbox: AttackHitbox {
-                lifetime: Timer::from_seconds(HITBOX_LIFETIME, TimerMode::Once),
-                damage: 1,
+                lifetime: Timer::from_seconds(lifetime, TimerMode::Once),
+                damage,
             },
             body: Body {
                 half_size: HITBOX_SIZE / 2.0,
             },
-            sprite: Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
+            sprite: slash_sprite(assets),
             transform: Transform {
                 translation: position,
                 rotation: Quat::from_rotation_z(direction.y.atan2(direction.x)),
@@ -253,51 +290,66 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut stats: ResMut<CombatStats>) {
-    commands.spawn(Camera2d);
-    commands.spawn(PlayerBundle::new());
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut stats: ResMut<CombatStats>,
+) {
+    spawn_camera(&mut commands);
+    spawn_arena_backdrop(&mut commands);
 
-    for position in [
-        Vec3::new(120.0, -120.0, 2.0),
-        Vec3::new(240.0, 30.0, 2.0),
-        Vec3::new(360.0, 150.0, 2.0),
+    let assets = TutorialSprites::load(&asset_server, &mut texture_atlas_layouts);
+    commands.insert_resource(assets.clone());
+    commands.spawn(PlayerBundle::new(&assets));
+
+    for (position, current_health) in [
+        (Vec3::new(120.0, -120.0, 3.0), 2),
+        (Vec3::new(255.0, 45.0, 3.0), 3),
+        (Vec3::new(340.0, 175.0, 3.0), 3),
     ] {
-        commands.spawn(EnemyBundle::new(position));
+        commands.spawn(EnemyBundle::new(position, current_health, &assets));
+        spawn_health_bar(
+            &mut commands,
+            Vec3::new(position.x, position.y + 36.0, 4.0),
+            current_health,
+            3,
+        );
     }
 
-    commands.spawn((
+    spawn_status_panel(
+        &mut commands,
         StatusText,
-        Text::new(""),
-        TextFont::from_font_size(22.0),
-        TextColor(Color::srgb(0.92, 0.95, 1.0)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(18),
-            left: px(18),
-            ..default()
-        },
-    ));
+        "Projectiles: F fires | Space keeps melee separate",
+        520.0,
+    );
 
     if tutorial_capture_enabled() {
         stats.shots = 1;
         stats.slashes = 1;
-        commands.spawn(ProjectileBundle::new(Vec3::new(-60.0, 20.0, 3.0), Vec2::X));
-        commands.spawn((
-            GameplayEntity,
-            AttackHitbox {
-                lifetime: Timer::from_seconds(30.0, TimerMode::Once),
-                damage: 0,
-            },
-            Body {
-                half_size: HITBOX_SIZE / 2.0,
-            },
-            Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
-            Transform {
-                translation: Vec3::new(-120.0, -45.0, 3.0),
-                rotation: Quat::from_rotation_z(0.0),
-                ..default()
-            },
+        stats.projectile_hits = 1;
+        stats.melee_hits = 1;
+
+        commands.spawn(ProjectileBundle::showcase(
+            Vec3::new(70.0, -120.0, 4.0),
+            Vec2::X,
         ));
+        commands.spawn(AttackHitboxBundle::showcase(
+            Vec3::new(-194.0, -120.0, 4.0),
+            Vec2::X,
+            &assets,
+        ));
+        spawn_impact_burst(
+            &mut commands,
+            Vec3::new(120.0, -120.0, 4.2),
+            Color::srgb(1.0, 0.72, 0.28),
+        );
+        spawn_world_label(
+            &mut commands,
+            "Projectile collision",
+            Vec3::new(116.0, -54.0, 4.0),
+        );
+        spawn_world_label(&mut commands, "Melee hitbox", Vec3::new(-194.0, -62.0, 4.0));
     }
 }
 
@@ -332,6 +384,7 @@ fn player_input(
 fn spawn_attack_hitbox(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
+    assets: Res<TutorialSprites>,
     player: Single<(&Transform, &Facing), With<Player>>,
     mut stats: ResMut<CombatStats>,
 ) {
@@ -342,7 +395,7 @@ fn spawn_attack_hitbox(
     let (transform, facing) = *player;
     let position = transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
 
-    commands.spawn(AttackHitboxBundle::new(position, facing.0));
+    commands.spawn(AttackHitboxBundle::new(position, facing.0, &assets));
     stats.slashes += 1;
 }
 
@@ -480,10 +533,8 @@ fn update_status_text(
         .join(", ");
 
     text.0 = format!(
-        "WASD move | Space slash | F fire\nshots: {} | projectile hits: {} | slashes: {} | melee hits: {}\nprojectiles: {} | hitboxes: {} | enemy health: {}",
-        stats.shots,
+        "F projectile | Space slash\nHits: projectile {} | melee {}\nActive: projectile {} | slash {} | enemy HP {}",
         stats.projectile_hits,
-        stats.slashes,
         stats.melee_hits,
         projectiles.iter().count(),
         hitboxes.iter().count(),

@@ -1,9 +1,13 @@
 use bevy::prelude::*;
 use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 
+mod tutorial_visuals;
+use tutorial_visuals::{
+    TutorialSprites, npc_sprite, player_sprite, spawn_arena_backdrop, spawn_camera,
+    spawn_dialogue_panel, spawn_status_panel, spawn_world_label,
+};
+
 const PLAYER_SPEED: f32 = 250.0;
-const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
-const NPC_SIZE: Vec2 = Vec2::splat(42.0);
 const INTERACT_DISTANCE: f32 = 82.0;
 
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -71,14 +75,23 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut dialogue: ResMut<DialogueState>) {
-    commands.spawn(Camera2d);
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut dialogue: ResMut<DialogueState>,
+) {
+    spawn_camera(&mut commands);
+    spawn_arena_backdrop(&mut commands);
+
+    let assets = TutorialSprites::load(&asset_server, &mut texture_atlas_layouts);
+    commands.insert_resource(assets.clone());
 
     commands.spawn((
         GameplayEntity,
         Player,
-        Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
-        Transform::from_xyz(-260.0, -40.0, 2.0),
+        player_sprite(&assets),
+        Transform::from_xyz(18.0, 74.0, 3.0),
     ));
 
     let mut first_npc = None;
@@ -105,46 +118,35 @@ fn setup(mut commands: Commands, mut dialogue: ResMut<DialogueState>) {
             .spawn((
                 GameplayEntity,
                 Npc { name, lines },
-                Sprite::from_color(Color::srgb(0.95, 0.68, 0.30), NPC_SIZE),
+                npc_sprite(&assets),
                 Transform::from_translation(position),
             ))
             .id();
 
         first_npc.get_or_insert(entity);
+        spawn_world_label(
+            &mut commands,
+            name,
+            Vec3::new(position.x, position.y + 42.0, 4.0),
+        );
     }
 
-    commands.spawn((
+    spawn_status_panel(
+        &mut commands,
         PromptText,
-        Text::new(""),
-        TextFont::from_font_size(22.0),
-        TextColor(Color::srgb(0.92, 0.95, 1.0)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(18),
-            left: px(18),
-            ..default()
-        },
-    ));
-
-    commands.spawn((
-        DialogueText,
-        Text::new(""),
-        TextFont::from_font_size(24.0),
-        TextColor(Color::srgb(1.0, 0.92, 0.62)),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: px(28),
-            left: px(32),
-            right: px(32),
-            padding: UiRect::all(px(14)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.06, 0.07, 0.10, 0.88)),
-    ));
+        "Dialogue uses GameState plus a DialogueState resource",
+        600.0,
+    );
+    spawn_dialogue_panel(&mut commands, DialogueText);
 
     if tutorial_capture_enabled() {
         dialogue.active_npc = first_npc;
         dialogue.line_index = 0;
+        spawn_world_label(
+            &mut commands,
+            "player is inside interact range",
+            Vec3::new(58.0, 18.0, 4.0),
+        );
     }
 }
 

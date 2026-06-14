@@ -1,6 +1,12 @@
 use bevy::prelude::*;
 use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 
+mod tutorial_visuals;
+use tutorial_visuals::{
+    TutorialSprites, gem_sprite, player_sprite, spawn_arena_backdrop, spawn_camera,
+    spawn_impact_burst, spawn_status_panel, spawn_world_label,
+};
+
 const PLAYER_SPEED: f32 = 260.0;
 const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const ITEM_SIZE: Vec2 = Vec2::splat(28.0);
@@ -126,12 +132,12 @@ struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    fn new() -> Self {
+    fn new(assets: &TutorialSprites) -> Self {
         Self {
             gameplay: GameplayEntity,
             player: Player,
-            body: BodyBundle::new(Vec3::new(-260.0, -80.0, 2.0), PLAYER_SIZE),
-            sprite: Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
+            body: BodyBundle::new(Vec3::new(-80.0, 90.0, 3.0), PLAYER_SIZE),
+            sprite: player_sprite(assets),
         }
     }
 }
@@ -146,16 +152,24 @@ struct ItemBundle {
 }
 
 impl ItemBundle {
-    fn new(kind: ItemKind, position: Vec3) -> Self {
+    fn new(kind: ItemKind, position: Vec3, assets: &TutorialSprites) -> Self {
         Self {
             gameplay: GameplayEntity,
             item: InventoryItem { kind },
             body: Body {
                 half_size: ITEM_SIZE / 2.0,
             },
-            sprite: Sprite::from_color(kind.color(), ITEM_SIZE),
+            sprite: item_sprite(kind, assets),
             transform: Transform::from_translation(position),
         }
+    }
+}
+
+fn item_sprite(kind: ItemKind, assets: &TutorialSprites) -> Sprite {
+    match kind {
+        ItemKind::Gem => gem_sprite(assets),
+        ItemKind::Key => Sprite::from_color(kind.color(), Vec2::new(38.0, 16.0)),
+        ItemKind::Potion => Sprite::from_color(kind.color(), Vec2::new(24.0, 38.0)),
     }
 }
 
@@ -195,36 +209,65 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut inventory: ResMut<Inventory>, mut stats: ResMut<RunStats>) {
-    commands.spawn(Camera2d);
-    commands.spawn(PlayerBundle::new());
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut inventory: ResMut<Inventory>,
+    mut stats: ResMut<RunStats>,
+) {
+    spawn_camera(&mut commands);
+    spawn_arena_backdrop(&mut commands);
 
-    for (kind, position) in [
-        (ItemKind::Gem, Vec3::new(-80.0, 90.0, 2.0)),
-        (ItemKind::Gem, Vec3::new(180.0, -80.0, 2.0)),
-        (ItemKind::Key, Vec3::new(260.0, 120.0, 2.0)),
-        (ItemKind::Potion, Vec3::new(40.0, -180.0, 2.0)),
+    let assets = TutorialSprites::load(&asset_server, &mut texture_atlas_layouts);
+    commands.insert_resource(assets.clone());
+    commands.spawn(PlayerBundle::new(&assets));
+
+    for (kind, position, collected_for_capture) in [
+        (ItemKind::Gem, Vec3::new(-80.0, 90.0, 2.0), true),
+        (ItemKind::Gem, Vec3::new(180.0, -80.0, 2.0), false),
+        (ItemKind::Key, Vec3::new(260.0, 120.0, 2.0), false),
+        (ItemKind::Potion, Vec3::new(40.0, -180.0, 2.0), true),
     ] {
-        commands.spawn(ItemBundle::new(kind, position));
+        if tutorial_capture_enabled() && collected_for_capture {
+            continue;
+        }
+
+        commands.spawn(ItemBundle::new(kind, position, &assets));
+
+        let label = match kind {
+            ItemKind::Gem => "world gem",
+            ItemKind::Key => "key item",
+            ItemKind::Potion => "potion",
+        };
+        spawn_world_label(
+            &mut commands,
+            label,
+            Vec3::new(position.x, position.y + 42.0, 4.0),
+        );
     }
 
-    commands.spawn((
+    spawn_status_panel(
+        &mut commands,
         InventoryText,
-        Text::new(""),
-        TextFont::from_font_size(24.0),
-        TextColor(Color::srgb(0.92, 0.95, 1.0)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(18),
-            left: px(18),
-            ..default()
-        },
-    ));
+        "Inventory resource updates when an item despawns",
+        560.0,
+    );
 
     if tutorial_capture_enabled() {
         inventory.add(ItemKind::Gem);
         inventory.add(ItemKind::Potion);
         stats.score = ItemKind::Gem.score_value() + ItemKind::Potion.score_value();
+        spawn_impact_burst(
+            &mut commands,
+            Vec3::new(-80.0, 90.0, 4.0),
+            Color::srgb(0.30, 0.95, 0.76),
+        );
+        spawn_world_label(
+            &mut commands,
+            "collected into Inventory",
+            Vec3::new(-80.0, 150.0, 4.0),
+        );
     }
 }
 
@@ -283,7 +326,7 @@ fn update_inventory_text(
         .unwrap_or_else(|| "last pickup: none".to_string());
 
     text.0 = format!(
-        "WASD move and collect items\nScore: {} | Gems: {} | Keys: {} | Potions: {}\n{} | remaining items: {}",
+        "WASD move into an item\nScore {} | Gems {} | Keys {} | Potions {}\n{} | world items left {}",
         stats.score,
         inventory.gems,
         inventory.keys,

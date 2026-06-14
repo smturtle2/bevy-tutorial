@@ -12,7 +12,7 @@
 
 레벨 배치를 Rust 코드 밖의 JSON 씬 파일로 옮깁니다. 씬에서 읽은 데이터는 이전 장에서 배운 같은 게임플레이 컴포넌트를 생성합니다. `Player`, `Wall`, `InventoryItem`, `Npc`, `Body`, `Transform`, 스프라이트가 그대로 쓰입니다.
 
-![두 데이터 기반 아레나를 바꿔 로드하는 장면](../../assets/screenshots/ch22-scene-loading.png)
+![JSON 씬 데이터가 벽, 아이템, NPC, 대화를 만드는 장면](../../assets/screenshots/ch22-scene-loading.png)
 
 ## 실행
 

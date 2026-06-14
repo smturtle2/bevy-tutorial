@@ -12,7 +12,7 @@
 
 This chapter moves level layout out of Rust source and into JSON scene files. The loaded scene still spawns the same gameplay components used earlier: `Player`, `Wall`, `InventoryItem`, `Npc`, `Body`, `Transform`, and sprites.
 
-![Scene loading swaps between two data-driven arenas.](../../assets/screenshots/ch22-scene-loading.png)
+![Loaded JSON scene data creates walls, items, an NPC, and dialogue.](../../assets/screenshots/ch22-scene-loading.png)
 
 ## Run
 

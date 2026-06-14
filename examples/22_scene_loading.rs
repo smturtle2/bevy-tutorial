@@ -4,6 +4,12 @@ use bevy::prelude::*;
 use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 use serde::Deserialize;
 
+mod tutorial_visuals;
+use tutorial_visuals::{
+    TutorialSprites, gem_sprite, npc_sprite, player_sprite, spawn_camera, spawn_dialogue_panel,
+    spawn_floor, spawn_world_label,
+};
+
 const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const ITEM_SIZE: Vec2 = Vec2::splat(26.0);
 const NPC_SIZE: Vec2 = Vec2::splat(38.0);
@@ -213,46 +219,46 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut current: ResMut<CurrentScene>) {
-    commands.spawn(Camera2d);
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut current: ResMut<CurrentScene>,
+) {
+    spawn_camera(&mut commands);
+
+    let assets = TutorialSprites::load(&asset_server, &mut texture_atlas_layouts);
+    commands.insert_resource(assets.clone());
+
+    spawn_floor(&mut commands, -5..=5, -3..=3);
     commands.spawn((
         StatusText,
         Text::new(""),
-        TextFont::from_font_size(22.0),
+        TextFont::from_font_size(19.0),
         TextColor(Color::srgb(0.92, 0.95, 1.0)),
         Node {
             position_type: PositionType::Absolute,
             top: px(18),
             left: px(18),
-            padding: UiRect::all(px(8)),
+            width: px(390),
+            padding: UiRect::axes(px(14), px(10)),
+            border: UiRect::all(px(1)),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.86)),
+        BackgroundColor(Color::srgba(0.045, 0.055, 0.075, 0.90)),
+        BorderColor::all(Color::srgba(0.36, 0.45, 0.58, 0.75)),
     ));
 
-    commands.spawn((
-        DialogueText,
-        Text::new(""),
-        TextFont::from_font_size(24.0),
-        TextColor(Color::srgb(1.0, 0.92, 0.62)),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: px(28),
-            left: px(32),
-            right: px(32),
-            padding: UiRect::all(px(14)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.06, 0.07, 0.10, 0.88)),
-    ));
+    spawn_dialogue_panel(&mut commands, DialogueText);
 
     let path = current.path;
-    current.message = load_scene(&mut commands, path);
+    current.message = load_scene(&mut commands, path, &assets);
 }
 
 fn scene_hotkeys(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
+    assets: Res<TutorialSprites>,
     entities: Query<Entity, With<SceneEntity>>,
     mut current: ResMut<CurrentScene>,
     mut inventory: ResMut<Inventory>,
@@ -281,10 +287,10 @@ fn scene_hotkeys(
     *dialogue = DialogueState::default();
     next_state.set(GameState::Playing);
     current.path = path;
-    current.message = load_scene(&mut commands, path);
+    current.message = load_scene(&mut commands, path, &assets);
 }
 
-fn load_scene(commands: &mut Commands, asset_path: &str) -> String {
+fn load_scene(commands: &mut Commands, asset_path: &str, assets: &TutorialSprites) -> String {
     let fs_path = format!("assets/{asset_path}");
     let text = match fs::read_to_string(&fs_path) {
         Ok(text) => text,
@@ -296,11 +302,11 @@ fn load_scene(commands: &mut Commands, asset_path: &str) -> String {
         Err(error) => return format!("Failed to parse {asset_path}: {error}"),
     };
 
-    spawn_scene(commands, &scene);
-    format!("Loaded {} from {}", scene.name, asset_path)
+    spawn_scene(commands, &scene, assets);
+    format!("Scene: {}", scene.name)
 }
 
-fn spawn_scene(commands: &mut Commands, scene: &SceneData) {
+fn spawn_scene(commands: &mut Commands, scene: &SceneData, assets: &TutorialSprites) {
     commands.spawn((
         GameplayEntity,
         SceneEntity,
@@ -308,9 +314,14 @@ fn spawn_scene(commands: &mut Commands, scene: &SceneData) {
         Body {
             half_size: PLAYER_SIZE / 2.0,
         },
-        Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
+        player_sprite(assets),
         Transform::from_xyz(scene.player_start[0], scene.player_start[1], 3.0),
     ));
+    spawn_world_label(
+        commands,
+        "player_start",
+        Vec3::new(scene.player_start[0], scene.player_start[1] - 46.0, 4.0),
+    );
 
     for wall in &scene.walls {
         let size = Vec2::new(wall.w, wall.h);
@@ -321,7 +332,7 @@ fn spawn_scene(commands: &mut Commands, scene: &SceneData) {
             Body {
                 half_size: size / 2.0,
             },
-            Sprite::from_color(Color::srgb(0.28, 0.33, 0.42), size),
+            Sprite::from_color(Color::srgb(0.30, 0.37, 0.48), size),
             Transform::from_xyz(wall.x, wall.y, 2.0),
         ));
     }
@@ -334,7 +345,7 @@ fn spawn_scene(commands: &mut Commands, scene: &SceneData) {
             Body {
                 half_size: ITEM_SIZE / 2.0,
             },
-            Sprite::from_color(item.kind.color(), ITEM_SIZE),
+            item_sprite(item.kind, assets),
             Transform::from_xyz(item.x, item.y, 3.0),
         ));
     }
@@ -350,9 +361,18 @@ fn spawn_scene(commands: &mut Commands, scene: &SceneData) {
             Body {
                 half_size: NPC_SIZE / 2.0,
             },
-            Sprite::from_color(Color::srgb(0.95, 0.68, 0.30), NPC_SIZE),
+            npc_sprite(assets),
             Transform::from_xyz(npc.x, npc.y, 3.0),
         ));
+        spawn_world_label(commands, &npc.name, Vec3::new(npc.x, npc.y + 40.0, 4.0));
+    }
+}
+
+fn item_sprite(kind: ItemKind, assets: &TutorialSprites) -> Sprite {
+    match kind {
+        ItemKind::Gem => gem_sprite(assets),
+        ItemKind::Key => Sprite::from_color(kind.color(), Vec2::new(38.0, 16.0)),
+        ItemKind::Potion => Sprite::from_color(kind.color(), Vec2::new(24.0, 38.0)),
     }
 }
 
@@ -484,7 +504,8 @@ fn collect_items(
 
 fn start_capture_dialogue(
     mut done: Local<bool>,
-    npcs: Query<Entity, With<Npc>>,
+    mut player: Option<Single<&mut Transform, With<Player>>>,
+    npcs: Query<(Entity, &Transform), (With<Npc>, Without<Player>)>,
     mut dialogue: ResMut<DialogueState>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
@@ -492,11 +513,14 @@ fn start_capture_dialogue(
         return;
     }
 
-    let Some(entity) = npcs.iter().next() else {
+    let Some((entity, npc_transform)) = npcs.iter().next() else {
         return;
     };
 
     *done = true;
+    if let Some(player) = player.as_mut() {
+        player.translation = npc_transform.translation + Vec3::new(-54.0, -34.0, 0.0);
+    }
     dialogue.active_npc = Some(entity);
     dialogue.line_index = 0;
     next_state.set(GameState::Dialogue);
@@ -504,18 +528,16 @@ fn start_capture_dialogue(
 
 fn update_status_text(
     current: Res<CurrentScene>,
-    inventory: Res<Inventory>,
-    stats: Res<RunStats>,
     state: Res<State<GameState>>,
     player: Option<Single<&Transform, With<Player>>>,
     items: Query<(), With<InventoryItem>>,
     npcs: Query<&Npc>,
-    npc_positions: Query<(&Transform, &Npc)>,
+    npc_positions: Query<(&Transform, &Npc), (With<Npc>, Without<Player>)>,
     walls: Query<(), With<Wall>>,
     mut text: Single<&mut Text, With<StatusText>>,
 ) {
     let prompt = if *state.get() == GameState::Dialogue {
-        "Dialogue | Space next | Esc close".to_string()
+        "Dialogue | Space next | Esc".to_string()
     } else if let Some(player) = player {
         let nearby = npc_positions.iter().find(|(transform, _)| {
             player
@@ -527,35 +549,18 @@ fn update_status_text(
 
         match nearby {
             Some((_, npc)) => format!("Playing | E talk to {}", npc.name),
-            None => "Playing | WASD move | 1/2 load scene".to_string(),
+            None => "Playing | WASD | 1/2 scene".to_string(),
         }
     } else {
         "Loading scene".to_string()
     };
 
-    let npc_summary = npcs
-        .iter()
-        .map(|npc| {
-            let first_line = npc.lines.first().map(String::as_str).unwrap_or("...");
-            format!("{}: {}", npc.name, first_line)
-        })
-        .collect::<Vec<_>>()
-        .join(" | ");
-
     text.0 = format!(
-        "{prompt}\n{}\nscore: {} | gems: {} | keys: {} | potions: {} | items left: {}\nwalls: {} | npcs: {}",
+        "{prompt}\n{}\nJSON -> {} walls | {} items | {} NPCs",
         current.message,
-        stats.score,
-        inventory.gems,
-        inventory.keys,
-        inventory.potions,
-        items.iter().count(),
         walls.iter().count(),
-        if npc_summary.is_empty() {
-            "none".to_string()
-        } else {
-            npc_summary
-        }
+        items.iter().count(),
+        npcs.iter().count()
     );
 }
 

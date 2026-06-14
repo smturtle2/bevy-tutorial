@@ -12,7 +12,7 @@
 
 This chapter adds audio without letting gameplay systems know how sound is played. Attack, pickup, and hurt systems emit typed messages. One audio system reads those messages and spawns short-lived audio players.
 
-![Audio event counters show attack, pickup, and hurt sounds.](../../assets/screenshots/ch21-audio-events.png)
+![Attack, pickup, and hurt events are staged with visible sound markers.](../../assets/screenshots/ch21-audio-events.png)
 
 ## Run
 

@@ -3,6 +3,13 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 
+mod tutorial_visuals;
+use tutorial_visuals::{
+    TutorialSprites, enemy_sprite, gem_sprite, player_sprite, slash_sprite, spawn_arena_backdrop,
+    spawn_camera, spawn_health_bar, spawn_impact_burst, spawn_sound_ring, spawn_status_panel,
+    spawn_world_label,
+};
+
 const PLAYER_SPEED: f32 = 260.0;
 const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const ENEMY_SIZE: Vec2 = Vec2::splat(34.0);
@@ -115,8 +122,19 @@ fn main() {
     app.run();
 }
 
-fn setup(mut commands: Commands, mut stats: ResMut<AudioStats>) {
-    commands.spawn(Camera2d);
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut stats: ResMut<AudioStats>,
+) {
+    spawn_camera(&mut commands);
+    spawn_arena_backdrop(&mut commands);
+
+    let assets = TutorialSprites::load(&asset_server, &mut texture_atlas_layouts);
+    commands.insert_resource(assets.clone());
+
+    let capture = tutorial_capture_enabled();
     commands.spawn((
         GameplayEntity,
         Player,
@@ -124,9 +142,12 @@ fn setup(mut commands: Commands, mut stats: ResMut<AudioStats>) {
         Body {
             half_size: PLAYER_SIZE / 2.0,
         },
-        Health { current: 5, max: 5 },
-        Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
-        Transform::from_xyz(-260.0, -80.0, 2.0),
+        Health {
+            current: if capture { 4 } else { 5 },
+            max: 5,
+        },
+        player_sprite(&assets),
+        Transform::from_xyz(-260.0, -80.0, 3.0),
     ));
 
     commands.spawn((
@@ -135,41 +156,48 @@ fn setup(mut commands: Commands, mut stats: ResMut<AudioStats>) {
         Body {
             half_size: ENEMY_SIZE / 2.0,
         },
-        Health { current: 2, max: 2 },
-        Sprite::from_color(Color::srgb(0.90, 0.24, 0.30), ENEMY_SIZE),
-        Transform::from_xyz(120.0, -60.0, 2.0),
+        Health {
+            current: if capture { 1 } else { 2 },
+            max: 2,
+        },
+        enemy_sprite(&assets),
+        Transform::from_xyz(120.0, -60.0, 3.0),
     ));
+    spawn_health_bar(
+        &mut commands,
+        Vec3::new(120.0, -24.0, 4.0),
+        if capture { 1 } else { 2 },
+        2,
+    );
 
-    for position in [
-        Vec3::new(-60.0, 90.0, 2.0),
-        Vec3::new(160.0, -70.0, 2.0),
-        Vec3::new(300.0, 110.0, 2.0),
+    for (position, collected_for_capture) in [
+        (Vec3::new(-60.0, 90.0, 3.0), true),
+        (Vec3::new(160.0, -70.0, 3.0), true),
+        (Vec3::new(300.0, 110.0, 3.0), false),
     ] {
+        if capture && collected_for_capture {
+            continue;
+        }
+
         commands.spawn((
             GameplayEntity,
             Gem,
             Body {
                 half_size: GEM_SIZE / 2.0,
             },
-            Sprite::from_color(Color::srgb(0.18, 0.88, 0.76), GEM_SIZE),
+            gem_sprite(&assets),
             Transform::from_translation(position),
         ));
     }
 
-    commands.spawn((
+    spawn_status_panel(
+        &mut commands,
         StatusText,
-        Text::new(""),
-        TextFont::from_font_size(22.0),
-        TextColor(Color::srgb(0.92, 0.95, 1.0)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(18),
-            left: px(18),
-            ..default()
-        },
-    ));
+        "Gameplay events become short-lived AudioPlayer entities",
+        610.0,
+    );
 
-    if tutorial_capture_enabled() {
+    if capture {
         stats.attack_sounds = 1;
         stats.pickup_sounds = 2;
         stats.hurt_sounds = 1;
@@ -182,9 +210,35 @@ fn setup(mut commands: Commands, mut stats: ResMut<AudioStats>) {
             Body {
                 half_size: HITBOX_SIZE / 2.0,
             },
-            Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
+            slash_sprite(&assets),
             Transform::from_xyz(-110.0, -80.0, 3.0),
         ));
+        spawn_sound_ring(
+            &mut commands,
+            Vec3::new(-110.0, -80.0, 2.5),
+            Color::srgb(1.0, 0.68, 0.25),
+            96.0,
+        );
+        spawn_sound_ring(
+            &mut commands,
+            Vec3::new(-60.0, 90.0, 2.5),
+            Color::srgb(0.18, 0.88, 0.76),
+            76.0,
+        );
+        spawn_sound_ring(
+            &mut commands,
+            Vec3::new(160.0, -70.0, 2.5),
+            Color::srgb(0.18, 0.88, 0.76),
+            76.0,
+        );
+        spawn_impact_burst(
+            &mut commands,
+            Vec3::new(120.0, -60.0, 4.0),
+            Color::srgb(1.0, 0.36, 0.32),
+        );
+        spawn_world_label(&mut commands, "Attack event", Vec3::new(-110.0, -20.0, 4.0));
+        spawn_world_label(&mut commands, "Pickup events", Vec3::new(42.0, 128.0, 4.0));
+        spawn_world_label(&mut commands, "Hurt event", Vec3::new(120.0, 4.0, 4.0));
     }
 }
 
@@ -220,6 +274,7 @@ fn move_player(
 fn spawn_attack_hitbox(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
+    assets: Res<TutorialSprites>,
     player: Single<(&Transform, &Facing), With<Player>>,
     mut audio_events: MessageWriter<GameAudioEvent>,
 ) {
@@ -239,7 +294,7 @@ fn spawn_attack_hitbox(
         Body {
             half_size: HITBOX_SIZE / 2.0,
         },
-        Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
+        slash_sprite(&assets),
         Transform {
             translation: position,
             rotation: Quat::from_rotation_z(facing.0.y.atan2(facing.0.x)),
@@ -369,7 +424,7 @@ fn update_status_text(
         .join(", ");
 
     text.0 = format!(
-        "WASD move | Space attack | touch gems/enemy\nattack sounds: {} | pickup sounds: {} | hurt sounds: {}\nplayer: {}/{} | enemy: {} | gems: {}",
+        "WASD move | Space attack | touch gems/enemy\nAudio events: attack {} | pickup {} | hurt {}\nPlayer {}/{} | Enemy {} | world gems {}",
         stats.attack_sounds,
         stats.pickup_sounds,
         stats.hurt_sounds,
