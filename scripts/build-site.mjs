@@ -563,7 +563,7 @@ function wrapFigures(html) {
 function addHeadingAnchors(html, toc) {
   const used = new Map();
   return html.replace(/<h([2-3])>([\s\S]*?)<\/h\1>/g, (_, level, inner) => {
-    const text = stripTags(inner).replace(/#/g, "").trim();
+    const text = decodeHtml(stripTags(inner)).replace(/#/g, "").trim();
     const baseId = slugify(text);
     const count = used.get(baseId) ?? 0;
     used.set(baseId, count + 1);
@@ -644,4 +644,13 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function decodeHtml(value) {
+  return String(value)
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
 }

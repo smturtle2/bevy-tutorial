@@ -21,7 +21,8 @@
   --radius: 8px;
   --radius-sm: 5px;
   --content: 1180px;
-  --article: 760px;
+  --doc-content: 1480px;
+  --article: 940px;
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -556,9 +557,9 @@ img {
 
 .doc-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, var(--article)) 220px;
-  gap: 32px;
-  width: min(100% - 32px, var(--content));
+  grid-template-columns: 240px minmax(0, var(--article)) 200px;
+  gap: 28px;
+  width: min(100% - 32px, var(--doc-content));
   margin: 0 auto;
   padding: 28px 0 64px;
 }
