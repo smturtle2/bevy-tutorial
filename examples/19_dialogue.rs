@@ -71,7 +71,7 @@ fn main() {
                 .in_set(GameSet::Ui),
         );
 
-    add_tutorial_screenshot(&mut app, "assets/screenshots/ch20-dialogue.png", 20);
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch19-dialogue.png", 20);
     app.run();
 }
 

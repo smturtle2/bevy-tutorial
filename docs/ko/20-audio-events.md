@@ -1,8 +1,8 @@
-# 21. 오디오 이벤트
+# 20. 오디오 이벤트
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 대화](20-dialogue.md) · [다음: 씬 로딩 →](22-scene-loading.md)
+[목차](index.md) · [← 이전: 대화](19-dialogue.md) · [다음: 씬 로딩 →](21-scene-loading.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 게임플레이 시스템이 소리 재생 방식을 몰라도 되게 오디오를 붙입니다. 공격, 수집, 피격 시스템은 타입 있는 메시지를 보냅니다. 오디오 시스템 하나가 그 메시지를 읽고 짧게 재생되는 오디오 엔티티를 만듭니다.
 
-![공격, 수집, 피격 이벤트가 위치별 사운드 표시로 드러나는 장면](../../assets/screenshots/ch21-audio-events.png)
+![공격, 수집, 피격 이벤트가 위치별 사운드 표시로 드러나는 장면](../../assets/screenshots/ch20-audio-events.png)
 
 ## 실행
 
 ```sh
-cargo run --example 21_audio_events
+cargo run --example 20_audio_events
 ```
 
 조작:
@@ -184,7 +184,7 @@ MessageReader<GameAudioEvent>
 실행합니다.
 
 ```sh
-cargo run --example 21_audio_events
+cargo run --example 20_audio_events
 ```
 
 확인 기준:
@@ -215,6 +215,6 @@ GameAudioEvent::Pickup => 960.0,
 
 <div align="center">
 
-[← 이전: 대화](20-dialogue.md) · [목차](index.md) · [다음: 씬 로딩 →](22-scene-loading.md)
+[← 이전: 대화](19-dialogue.md) · [목차](index.md) · [다음: 씬 로딩 →](21-scene-loading.md)
 
 </div>

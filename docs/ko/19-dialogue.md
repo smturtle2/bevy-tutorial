@@ -1,8 +1,8 @@
-# 20. 대화
+# 19. 대화
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 인벤토리](19-inventory.md) · [다음: 오디오 이벤트 →](21-audio-events.md)
+[목차](index.md) · [← 이전: 인벤토리](18-inventory.md) · [다음: 오디오 이벤트 →](20-audio-events.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 RPG 루프에 대화 모드를 추가합니다. NPC는 자기 이름과 대사를 가집니다. `DialogueState`는 현재 어떤 NPC와 몇 번째 줄을 보고 있는지 저장합니다. `GameState::Dialogue`에서는 일반 이동이 멈추고, 대화 입력이 줄 넘김과 닫기를 처리합니다.
 
-![NPC와 대화하면 화면 아래 대화 패널이 열리는 장면](../../assets/screenshots/ch20-dialogue.png)
+![NPC와 대화하면 화면 아래 대화 패널이 열리는 장면](../../assets/screenshots/ch19-dialogue.png)
 
 ## 실행
 
 ```sh
-cargo run --example 20_dialogue
+cargo run --example 19_dialogue
 ```
 
 조작:
@@ -81,7 +81,7 @@ struct Npc {
 씬 파일에서 읽은 대사                 Vec<String>
 ```
 
-22장은 JSON을 파싱해서 실행 중에 문자열을 만들기 때문에 `Vec<String>`을 씁니다.
+21장은 JSON을 파싱해서 실행 중에 문자열을 만들기 때문에 `Vec<String>`을 씁니다.
 
 ## 구현 흐름 3: 현재 대화 저장하기
 
@@ -182,7 +182,7 @@ name: &'static str
 실행합니다.
 
 ```sh
-cargo run --example 20_dialogue
+cargo run --example 19_dialogue
 ```
 
 확인 기준:
@@ -207,6 +207,6 @@ Mapper NPC에 대사를 하나 더 추가합니다.
 
 <div align="center">
 
-[← 이전: 인벤토리](19-inventory.md) · [목차](index.md) · [다음: 오디오 이벤트 →](21-audio-events.md)
+[← 이전: 인벤토리](18-inventory.md) · [목차](index.md) · [다음: 오디오 이벤트 →](20-audio-events.md)
 
 </div>

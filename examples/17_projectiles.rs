@@ -286,7 +286,7 @@ fn main() {
                 .run_if(in_state(GameState::Playing)),
         );
 
-    add_tutorial_screenshot(&mut app, "assets/screenshots/ch18-projectiles.png", 20);
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch17-projectiles.png", 20);
     app.run();
 }
 

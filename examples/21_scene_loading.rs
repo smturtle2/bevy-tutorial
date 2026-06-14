@@ -215,7 +215,7 @@ fn main() {
                 .in_set(GameSet::Ui),
         );
 
-    add_tutorial_screenshot(&mut app, "assets/screenshots/ch22-scene-loading.png", 20);
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch21-scene-loading.png", 20);
     app.run();
 }
 

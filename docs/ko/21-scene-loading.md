@@ -1,8 +1,8 @@
-# 22. 씬 로딩
+# 21. 씬 로딩
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 오디오 이벤트](21-audio-events.md) · [기여하기 →](https://github.com/smturtle2/bevy-tutorial)
+[목차](index.md) · [← 이전: 오디오 이벤트](20-audio-events.md) · [다음: 최종 RPG 게임 →](22-final-rpg-game.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 레벨 배치를 Rust 코드 밖의 JSON 씬 파일로 옮깁니다. 씬에서 읽은 데이터는 이전 장에서 배운 같은 게임플레이 컴포넌트를 생성합니다. `Player`, `Wall`, `InventoryItem`, `Npc`, `Body`, `Transform`, 스프라이트가 그대로 쓰입니다.
 
-![JSON 씬 데이터가 벽, 아이템, NPC, 대화를 만드는 장면](../../assets/screenshots/ch22-scene-loading.png)
+![JSON 씬 데이터가 벽, 아이템, NPC, 대화를 만드는 장면](../../assets/screenshots/ch21-scene-loading.png)
 
 ## 실행
 
 ```sh
-cargo run --example 22_scene_loading
+cargo run --example 21_scene_loading
 ```
 
 조작:
@@ -40,7 +40,7 @@ Esc             대화 닫기
 serde struct      파일이 가져야 할 모양을 정의
 spawn_scene       씬 데이터를 Bevy 엔티티로 변환
 SceneEntity       씬 전환 전 제거할 로드 엔티티 표시
-GameplayEntity    확장 예제들이 공유하는 게임플레이 마커
+GameplayEntity    기능 예제들이 공유하는 게임플레이 마커
 InventoryItem     로드된 수집물이 인벤토리 장의 컴포넌트를 사용
 Npc               로드된 NPC가 대화 장의 name + lines 모양을 사용
 DialogueState     현재 로드된 NPC와의 대화를 추적
@@ -183,7 +183,7 @@ if overlaps(player_transform, player_body, item_transform, item_body) {
 
 ## 통합 지점
 
-씬 로딩은 데이터 파일과 게임플레이 시스템을 연결하며 확장 트랙을 마무리합니다.
+씬 로딩은 데이터 파일과 게임플레이 시스템을 연결하며 고급 시스템 트랙을 마무리합니다.
 
 ```text
 인벤토리     로드된 아이템은 InventoryItem 엔티티
@@ -223,7 +223,7 @@ struct Npc {
 실행합니다.
 
 ```sh
-cargo run --example 22_scene_loading
+cargo run --example 21_scene_loading
 ```
 
 확인 기준:
@@ -250,6 +250,6 @@ cargo run --example 22_scene_loading
 
 <div align="center">
 
-[← 이전: 오디오 이벤트](21-audio-events.md) · [목차](index.md) · [기여하기 →](https://github.com/smturtle2/bevy-tutorial)
+[← 이전: 오디오 이벤트](20-audio-events.md) · [목차](index.md) · [다음: 최종 RPG 게임 →](22-final-rpg-game.md)
 
 </div>

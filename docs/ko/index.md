@@ -10,11 +10,11 @@
 
 ---
 
-이 튜토리얼은 작은 탑다운 RPG를 만들면서 Rust와 Bevy를 함께 익히는 커뮤니티 문서입니다. 창 하나와 스프라이트 하나로 시작해 플레이 가능한 전투 루프를 만들고, 이후에는 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩을 기능별 독립 예제로 살펴보며 통합 위치를 함께 확인합니다.
+이 튜토리얼은 작은 탑다운 RPG를 만들면서 Rust와 Bevy를 함께 익히는 커뮤니티 문서입니다. 창 하나와 스프라이트 하나로 시작해 RPG 시스템을 하나씩 만들고, 마지막에는 그 시스템들을 하나의 플레이 가능한 최종 게임으로 통합합니다.
 
 진행 방식은 실전 중심입니다. 매 장마다 작게 만들고, 실행해 보고, 규칙 하나를 바꿔 본 뒤, 그 코드에 들어간 Rust와 Bevy 계약을 다시 짚습니다.
 
-![통합 RPG 튜토리얼 미리보기](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+![최종 RPG 게임 튜토리얼 미리보기](../../assets/screenshots/ch22-final-rpg-game.png)
 
 ## 진행 방식
 
@@ -53,8 +53,8 @@
 | 화면 표현 | 6 | 이미지 에셋, 카메라 추적, 월드 공간 텍스트 |
 | RPG 기초 | 7 | 이동, 적, 수집, 체력, 점수, HUD가 있는 작은 아레나 |
 | RPG 시스템 | 8-16 | 부드러운 카메라, 웨이브, 공격, 스프라이트, 고정 HUD, 애니메이션, 맵 충돌, 상태, 저장 |
-| 핵심 통합 | 17 | 전투 루프 시스템을 합친 플레이 가능한 RPG 체크포인트 |
-| RPG 확장 예제 | 18-22 | 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩을 기능별로 만들고 통합 위치를 확인 |
+| 고급 RPG 시스템 | 17-21 | 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩 |
+| 최종 게임 | 22 | 튜토리얼 전체 기능을 합친 플레이 가능한 RPG |
 
 ## 전체 구성
 
@@ -63,11 +63,11 @@
 ```text
 0-6      Rust, App, ECS, 번들, 플러그인, 에셋, 카메라, UI
 7-16     개별 RPG 시스템을 집중 예제로 학습
-17       통합 RPG 체크포인트
-18-22    통합 위치를 분명히 보여주는 기능별 확장 예제
+17-21    최종 기능 구성을 완성하는 고급 RPG 시스템
+22       모든 기능을 합친 최종 RPG 게임
 ```
 
-18장부터는 각 예제가 독립 실행 가능하며, 해당 기능이 실제로 쓰는 기준만 이어받습니다. 발사체는 전투 데이터, 인벤토리는 점수와 보유 데이터, 대화는 상태 데이터, 오디오는 타입 있는 메시지, 씬 로딩은 로드된 컴포넌트에 집중합니다.
+17-21장은 각 기능을 독립 실행 가능한 예제로 배웁니다. 22장은 근접 공격, 발사체, 인벤토리, 대화, 오디오 이벤트, 씬 로딩, 상태, HUD, 적 웨이브, 애니메이션, 충돌, 저장을 하나의 게임으로 합칩니다.
 
 ## 목차
 
@@ -88,12 +88,12 @@
 14. [직접 만든 맵 구조](14-handmade-map-geometry.md)
 15. [게임 상태](15-game-states.md)
 16. [진행도 저장과 불러오기](16-save-load-progress.md)
-17. [통합 RPG 예제](17-complete-rpg-slice.md)
-18. [발사체](18-projectiles.md)
-19. [인벤토리](19-inventory.md)
-20. [대화](20-dialogue.md)
-21. [오디오 이벤트](21-audio-events.md)
-22. [씬 로딩](22-scene-loading.md)
+17. [발사체](17-projectiles.md)
+18. [인벤토리](18-inventory.md)
+19. [대화](19-dialogue.md)
+20. [오디오 이벤트](20-audio-events.md)
+21. [씬 로딩](21-scene-loading.md)
+22. [최종 RPG 게임](22-final-rpg-game.md)
 
 ## 예제 실행
 
@@ -116,12 +116,12 @@ cargo run --example 13_animation_state
 cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
-cargo run --example 17_complete_rpg_slice
-cargo run --example 18_projectiles
-cargo run --example 19_inventory
-cargo run --example 20_dialogue
-cargo run --example 21_audio_events
-cargo run --example 22_scene_loading
+cargo run --example 17_projectiles
+cargo run --example 18_inventory
+cargo run --example 19_dialogue
+cargo run --example 20_audio_events
+cargo run --example 21_scene_loading
+cargo run --example 22_final_rpg_game
 ```
 
 ## 핵심 감각

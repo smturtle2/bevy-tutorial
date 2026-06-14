@@ -1,8 +1,8 @@
-# 19. Inventory
+# 18. Inventory
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Projectiles](18-projectiles.md) · [Next: Dialogue →](20-dialogue.md)
+[Index](index.md) · [← Previous: Projectiles](17-projectiles.md) · [Next: Dialogue →](19-dialogue.md)
 
 </div>
 
@@ -12,19 +12,19 @@
 
 This chapter extends the RPG data model with inventory. Pickups remain world entities with position and collision, but collection now updates two owners: `Inventory` stores what the player owns, and `RunStats` stores score earned during the run.
 
-![Inventory counts update as the player collects items.](../../assets/screenshots/ch19-inventory.png)
+![Inventory counts update as the player collects items.](../../assets/screenshots/ch18-inventory.png)
 
 ## Run
 
 ```sh
-cargo run --example 19_inventory
+cargo run --example 18_inventory
 ```
 
 Move with WASD or arrow keys and touch the items.
 
 ## Continuity Contract
 
-The chapter keeps the same expansion-checkpoint shape:
+The chapter keeps only the contracts the inventory feature touches:
 
 ```text
 GameState::Playing      gameplay systems are gated by state
@@ -162,9 +162,9 @@ The HUD reads `Inventory` and `RunStats` and presents their current values.
 Inventory connects to earlier and later chapters like this:
 
 ```text
-chapter 17 score       RunStats.score still records run value
-chapter 19 inventory   Inventory records owned items
-chapter 22 scenes      scene files can spawn InventoryItem entities
+run score              RunStats.score still records run value
+inventory resource     Inventory records owned items
+chapter 21 scenes      scene files can spawn InventoryItem entities
 save/load              long-lived inventory fields can be added to Progress
 ```
 
@@ -209,7 +209,7 @@ In a multiplayer game, `Inventory` would usually become a component on each play
 Run:
 
 ```sh
-cargo run --example 19_inventory
+cargo run --example 18_inventory
 ```
 
 Expected result:
@@ -235,6 +235,6 @@ Expected result: the new potion appears, can be collected, and increases the pot
 
 <div align="center">
 
-[← Previous: Projectiles](18-projectiles.md) · [Index](index.md) · [Next: Dialogue →](20-dialogue.md)
+[← Previous: Projectiles](17-projectiles.md) · [Index](index.md) · [Next: Dialogue →](19-dialogue.md)
 
 </div>

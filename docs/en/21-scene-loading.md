@@ -1,8 +1,8 @@
-# 22. Scene Loading
+# 21. Scene Loading
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Audio events](21-audio-events.md) · [Contribute →](https://github.com/smturtle2/bevy-tutorial)
+[Index](index.md) · [← Previous: Audio events](20-audio-events.md) · [Next: Final RPG game →](22-final-rpg-game.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 This chapter moves level layout out of Rust source and into JSON scene files. The loaded scene still spawns the same gameplay components used earlier: `Player`, `Wall`, `InventoryItem`, `Npc`, `Body`, `Transform`, and sprites.
 
-![Loaded JSON scene data creates walls, items, an NPC, and dialogue.](../../assets/screenshots/ch22-scene-loading.png)
+![Loaded JSON scene data creates walls, items, an NPC, and dialogue.](../../assets/screenshots/ch21-scene-loading.png)
 
 ## Run
 
 ```sh
-cargo run --example 22_scene_loading
+cargo run --example 21_scene_loading
 ```
 
 Controls:
@@ -40,7 +40,7 @@ scene file          describes where gameplay objects start
 serde structs       define the accepted file shape
 spawn_scene         converts scene data into Bevy entities
 SceneEntity         marks loaded entities for cleanup before a scene switch
-GameplayEntity      keeps the same broad gameplay marker used by expansion examples
+GameplayEntity      keeps the same broad gameplay marker used by feature examples
 InventoryItem       loaded pickups use the inventory chapter's component
 Npc                 loaded NPCs use the dialogue chapter's name + lines shape
 DialogueState       tracks the current loaded NPC conversation
@@ -183,7 +183,7 @@ That is the payoff of using the same component contracts across chapters.
 
 ## Integration Points
 
-Scene loading closes the expansion track by connecting data files to gameplay systems:
+Scene loading closes the advanced systems track by connecting data files to gameplay systems:
 
 ```text
 inventory   loaded items are InventoryItem entities
@@ -223,7 +223,7 @@ That is the owned version of chapter 20's hard-coded `&'static str` dialogue.
 Run:
 
 ```sh
-cargo run --example 22_scene_loading
+cargo run --example 21_scene_loading
 ```
 
 Expected result:
@@ -250,6 +250,6 @@ Expected result: running the example again shows the extra potion without changi
 
 <div align="center">
 
-[← Previous: Audio events](21-audio-events.md) · [Index](index.md) · [Contribute →](https://github.com/smturtle2/bevy-tutorial)
+[← Previous: Audio events](20-audio-events.md) · [Index](index.md) · [Next: Final RPG game →](22-final-rpg-game.md)
 
 </div>

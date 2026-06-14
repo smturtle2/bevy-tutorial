@@ -1,6 +1,6 @@
 # Rust + Bevy Tutorial
 
-A community-made Rust + Bevy tutorial site for learning Rust through a small playable Bevy RPG slice.
+A community-made Rust + Bevy tutorial site for learning Rust through a small playable Bevy RPG game.
 
 Public site:
 
@@ -12,7 +12,7 @@ The tutorial targets:
 - Rust edition: `2024`
 - Bevy: `0.18.1`
 
-![Integrated RPG slice preview](assets/screenshots/complete-rpg-slice-preview.png)
+![Final RPG game preview](assets/screenshots/ch22-final-rpg-game.png)
 
 ## Run The Bevy Project
 
@@ -39,12 +39,12 @@ cargo run --example 13_animation_state
 cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
-cargo run --example 17_complete_rpg_slice
-cargo run --example 18_projectiles
-cargo run --example 19_inventory
-cargo run --example 20_dialogue
-cargo run --example 21_audio_events
-cargo run --example 22_scene_loading
+cargo run --example 17_projectiles
+cargo run --example 18_inventory
+cargo run --example 19_dialogue
+cargo run --example 20_audio_events
+cargo run --example 21_scene_loading
+cargo run --example 22_final_rpg_game
 ```
 
 ## Run The Site Locally

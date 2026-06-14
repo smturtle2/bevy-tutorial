@@ -31,12 +31,12 @@ const chapters = [
   chapter(14, "14-handmade-map-geometry", "Handmade Map Geometry", "직접 만든 맵 구조", "RPG Features", "RPG 기능", "cargo run --example 14_handmade_map_geometry", "Build a small map from explicit geometry and collision bounds.", "직접 작성한 맵 구조와 충돌 범위로 작은 맵을 만듭니다."),
   chapter(15, "15-game-states", "Game States", "게임 상태", "RPG Features", "RPG 기능", "cargo run --example 15_game_states", "Model menu, playing, paused, and game over as Bevy states.", "메뉴, 플레이 중, 일시정지, 게임 오버를 Bevy 상태로 모델링합니다."),
   chapter(16, "16-save-load-progress", "Save And Load Progress", "진행도 저장과 불러오기", "RPG Features", "RPG 기능", "cargo run --example 16_save_load_progress", "Persist explicit progress data instead of serializing the whole world.", "전체 월드가 아니라 명시적인 진행 데이터를 저장합니다."),
-  chapter(17, "17-complete-rpg-slice", "Integrated RPG Slice", "통합 RPG 예제", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the combat-loop systems together into a playable RPG checkpoint.", "전투 루프 시스템을 합쳐 플레이 가능한 RPG 체크포인트를 만듭니다."),
-  chapter(18, "18-projectiles", "Projectiles", "발사체", "RPG Expansions", "RPG 확장", "cargo run --example 18_projectiles", "Extend the combat loop with ranged projectiles beside melee hitboxes.", "근접 히트박스 옆에 원거리 발사체를 추가합니다."),
-  chapter(19, "19-inventory", "Inventory", "인벤토리", "RPG Expansions", "RPG 확장", "cargo run --example 19_inventory", "Add inventory while keeping run score and pickup collision rules.", "점수와 수집 충돌 규칙을 유지하면서 인벤토리를 추가합니다."),
-  chapter(20, "20-dialogue", "Dialogue", "대화", "RPG Expansions", "RPG 확장", "cargo run --example 20_dialogue", "Add dialogue as an explicit game state with NPC-owned lines.", "NPC가 가진 대사와 명시적인 대화 상태를 추가합니다."),
-  chapter(21, "21-audio-events", "Audio Events", "오디오 이벤트", "RPG Expansions", "RPG 확장", "cargo run --example 21_audio_events", "Emit typed audio events from real attack, pickup, and hurt rules.", "공격, 수집, 피격 규칙에서 타입 있는 오디오 이벤트를 발생시킵니다."),
-  chapter(22, "22-scene-loading", "Scene Loading", "씬 로딩", "RPG Expansions", "RPG 확장", "cargo run --example 22_scene_loading", "Load scene files that spawn the same gameplay components.", "씬 파일을 읽어 기존 게임플레이 컴포넌트를 생성합니다."),
+  chapter(17, "17-projectiles", "Projectiles", "발사체", "RPG Systems", "RPG 시스템", "cargo run --example 17_projectiles", "Add ranged projectiles beside melee hitboxes.", "근접 히트박스 옆에 원거리 발사체를 추가합니다."),
+  chapter(18, "18-inventory", "Inventory", "인벤토리", "RPG Systems", "RPG 시스템", "cargo run --example 18_inventory", "Track owned items while keeping pickup collision and run score.", "수집 충돌과 점수 흐름을 유지하면서 보유 아이템을 기록합니다."),
+  chapter(19, "19-dialogue", "Dialogue", "대화", "RPG Systems", "RPG 시스템", "cargo run --example 19_dialogue", "Add dialogue as an explicit game state with NPC-owned lines.", "NPC가 가진 대사와 명시적인 대화 상태를 추가합니다."),
+  chapter(20, "20-audio-events", "Audio Events", "오디오 이벤트", "RPG Systems", "RPG 시스템", "cargo run --example 20_audio_events", "Emit typed audio events from real attack, pickup, and hurt rules.", "공격, 수집, 피격 규칙에서 타입 있는 오디오 이벤트를 발생시킵니다."),
+  chapter(21, "21-scene-loading", "Scene Loading", "씬 로딩", "RPG Systems", "RPG 시스템", "cargo run --example 21_scene_loading", "Load scene files that spawn gameplay components.", "씬 파일을 읽어 게임플레이 컴포넌트를 생성합니다."),
+  chapter(22, "22-final-rpg-game", "Final RPG Game", "최종 RPG 게임", "Final Game", "최종 게임", "cargo run --example 22_final_rpg_game", "Integrate the full tutorial into one playable RPG game.", "튜토리얼 전체 기능을 하나의 플레이 가능한 RPG 게임으로 통합합니다."),
 ];
 
 const chapterThumbnails = {
@@ -57,12 +57,12 @@ const chapterThumbnails = {
   "14-handmade-map-geometry": "screenshots/ch14-handmade-map.png",
   "15-game-states": "screenshots/ch15-game-state-menu.png",
   "16-save-load-progress": "screenshots/ch16-save-load-progress.png",
-  "17-complete-rpg-slice": "screenshots/ch17-complete-rpg-gameplay.png",
-  "18-projectiles": "screenshots/ch18-projectiles.png",
-  "19-inventory": "screenshots/ch19-inventory.png",
-  "20-dialogue": "screenshots/ch20-dialogue.png",
-  "21-audio-events": "screenshots/ch21-audio-events.png",
-  "22-scene-loading": "screenshots/ch22-scene-loading.png",
+  "22-final-rpg-game": "screenshots/ch22-final-rpg-game.png",
+  "17-projectiles": "screenshots/ch17-projectiles.png",
+  "18-inventory": "screenshots/ch18-inventory.png",
+  "19-dialogue": "screenshots/ch19-dialogue.png",
+  "20-audio-events": "screenshots/ch20-audio-events.png",
+  "21-scene-loading": "screenshots/ch21-scene-loading.png",
 };
 
 const copy = {
@@ -75,11 +75,11 @@ const copy = {
     start: "Start learning",
     viewExamples: "View examples",
     heroTitle: "<strong>Rust</strong> + Bevy Tutorial",
-    heroLead: "Learn Rust through a playable Bevy RPG slice. This is a community-made path for learners who want practical code, clear contracts, and runnable examples.",
+    heroLead: "Learn Rust through a playable Bevy RPG game. This is a community-made path for learners who want practical code, clear contracts, and runnable examples.",
     heroPoints: [
       "Rust basics are introduced exactly when Bevy code needs them.",
       "Every major RPG system has a chapter and a runnable example.",
-      "Architecture grows from systems to bundles, plugins, states, saving, and expansion checkpoints.",
+      "Architecture grows from systems to bundles, plugins, states, scene data, saving, and the final game.",
     ],
     learningPath: "Your learning path",
     learningPathNote: "Read in order or jump to the chapter that matches the system you are building.",
@@ -92,7 +92,7 @@ const copy = {
     chapterCount: "23 chapters",
     exampleCount: "22 examples",
     previewLabel: "RPG tutorial preview",
-    previewAlt: "Integrated RPG tutorial preview",
+    previewAlt: "Final RPG game tutorial preview",
     onThisPage: "On this page",
     allChapters: "All chapters",
     previous: "Previous",
@@ -118,7 +118,7 @@ const copy = {
     heroPoints: [
       "Bevy 코드에 필요한 Rust 기초를 등장 순서에 맞춰 설명합니다.",
       "핵심 RPG 시스템마다 장과 실행 가능한 예제가 있습니다.",
-      "시스템에서 번들, 플러그인, 상태, 저장, 확장 체크포인트까지 구조를 단계적으로 키웁니다.",
+      "시스템에서 번들, 플러그인, 상태, 씬 데이터, 저장, 최종 게임까지 구조를 단계적으로 키웁니다.",
     ],
     learningPath: "학습 경로",
     learningPathNote: "순서대로 읽어도 되고, 지금 만들고 싶은 시스템에 맞는 장으로 이동해도 됩니다.",
@@ -131,7 +131,7 @@ const copy = {
     chapterCount: "23장",
     exampleCount: "예제 22개",
     previewLabel: "RPG 튜토리얼 미리보기",
-    previewAlt: "통합 RPG 튜토리얼 미리보기",
+    previewAlt: "최종 RPG 게임 튜토리얼 미리보기",
     onThisPage: "이 페이지",
     allChapters: "전체 목차",
     previous: "이전",
@@ -255,7 +255,7 @@ function renderNotFound(assetTags) {
 
 function renderHome(lang, assetTags) {
   const t = copy[lang];
-  const heroImage = `${base}assets/screenshots/ch17-complete-rpg-gameplay.png`;
+  const heroImage = `${base}assets/screenshots/ch22-final-rpg-game.png`;
   const features = [
     [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만들며 배우기", lang === "en" ? "Build an RPG step by step with runnable examples." : "실행 가능한 예제를 따라 RPG를 단계별로 만듭니다."],
     [asset("enemy.png"), lang === "en" ? "Bevy patterns" : "Bevy 패턴", lang === "en" ? "Learn ECS, plugins, states, assets, UI, and saving." : "ECS, 플러그인, 상태, 에셋, UI, 저장을 배웁니다."],
@@ -475,7 +475,7 @@ function renderFooter(lang) {
           <h3>${escapeHtml(t.navExamples)}</h3>
           <div class="footer-links">
             <a href="${pageUrl(lang)}#examples">${escapeHtml(t.examplesTitle)}</a>
-            <a href="${pageUrl(lang, chapters[17].slug)}">${escapeHtml(chapters[17].title[lang])}</a>
+            <a href="${pageUrl(lang, chapters.at(-1).slug)}">${escapeHtml(chapters.at(-1).title[lang])}</a>
           </div>
         </div>
         <div>
@@ -638,7 +638,7 @@ function htmlDocument({ lang, title, description, assetTags, body, redirect = nu
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:type" content="website" />
-    <link rel="icon" href="${base}assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="${base}assets/favicon.png" type="image/png" />
     <title>${escapeHtml(title)}</title>
     ${assetTags}
   </head>
@@ -657,7 +657,7 @@ function asset(name) {
 }
 
 function chapterThumbnail(item) {
-  return asset(chapterThumbnails[item.slug] ?? "screenshots/ch17-complete-rpg-gameplay.png");
+  return asset(chapterThumbnails[item.slug] ?? "screenshots/ch22-final-rpg-game.png");
 }
 
 function writeFile(relativePath, content) {

@@ -1,7 +1,7 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, time::Duration};
 
 use bevy::prelude::*;
-use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
+use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_enabled};
 use serde::{Deserialize, Serialize};
 
 const SAVE_PATH: &str = "target/tutorial-save/complete-progress.json";
@@ -10,15 +10,22 @@ const ENEMY_SPEED: f32 = 90.0;
 const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const ENEMY_SIZE: Vec2 = Vec2::splat(34.0);
 const GEM_SIZE: Vec2 = Vec2::splat(26.0);
+const KEY_SIZE: Vec2 = Vec2::new(36.0, 14.0);
+const POTION_SIZE: Vec2 = Vec2::new(22.0, 34.0);
+const PROJECTILE_SIZE: Vec2 = Vec2::new(38.0, 12.0);
 const HITBOX_SIZE: Vec2 = Vec2::new(58.0, 34.0);
 const HITBOX_DISTANCE: f32 = 46.0;
+const PROJECTILE_SPEED: f32 = 560.0;
+const PROJECTILE_LIFETIME: f32 = 0.85;
 const CAMERA_SMOOTHNESS: f32 = 8.0;
+const INTERACT_DISTANCE: f32 = 86.0;
 
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 enum GameState {
     #[default]
     Menu,
     Playing,
+    Dialogue,
     Paused,
     GameOver,
 }
@@ -38,13 +45,13 @@ enum GameSet {
 struct GameplayEntity;
 
 #[derive(Component)]
+struct SceneEntity;
+
+#[derive(Component)]
 struct Player;
 
 #[derive(Component)]
 struct Enemy;
-
-#[derive(Component)]
-struct Collectible;
 
 #[derive(Component)]
 struct Wall;
@@ -70,6 +77,48 @@ struct Facing(Vec2);
 struct Health {
     current: i32,
     max: i32,
+}
+
+#[derive(Component)]
+struct InventoryItem {
+    kind: ItemKind,
+}
+
+#[derive(Component)]
+struct Npc {
+    name: String,
+    lines: Vec<String>,
+}
+
+#[derive(Component)]
+struct Projectile {
+    lifetime: Timer,
+    damage: i32,
+}
+
+#[derive(Component, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum ItemKind {
+    Gem,
+    Key,
+    Potion,
+}
+
+impl ItemKind {
+    fn score_value(self) -> u32 {
+        match self {
+            ItemKind::Gem => 10,
+            ItemKind::Key => 50,
+            ItemKind::Potion => 0,
+        }
+    }
+
+    fn color(self) -> Color {
+        match self {
+            ItemKind::Gem => Color::srgb(1.0, 0.82, 0.20),
+            ItemKind::Key => Color::srgb(1.0, 0.78, 0.25),
+            ItemKind::Potion => Color::srgb(0.94, 0.24, 0.42),
+        }
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +177,15 @@ struct HudSaveText;
 #[derive(Component)]
 struct HudHealthFill;
 
+#[derive(Component)]
+struct HudInventoryText;
+
+#[derive(Component)]
+struct HudSceneText;
+
+#[derive(Component)]
+struct DialogueText;
+
 #[derive(Resource, Clone)]
 struct SpriteAssets {
     player_sheet: Handle<Image>,
@@ -135,6 +193,15 @@ struct SpriteAssets {
     enemy: Handle<Image>,
     gem: Handle<Image>,
     slash: Handle<Image>,
+}
+
+#[derive(Message, Debug, Clone, Copy)]
+enum GameAudioEvent {
+    Attack,
+    Projectile,
+    Pickup,
+    Hurt,
+    Dialogue,
 }
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -162,6 +229,44 @@ impl Default for RunStats {
     fn default() -> Self {
         Self { score: 0, wave: 1 }
     }
+}
+
+#[derive(Resource)]
+struct CurrentScene {
+    path: &'static str,
+    title: String,
+}
+
+impl Default for CurrentScene {
+    fn default() -> Self {
+        Self {
+            path: "scenes/arena_a.json",
+            title: "Training Yard".to_string(),
+        }
+    }
+}
+
+#[derive(Resource, Default)]
+struct Inventory {
+    gems: u32,
+    keys: u32,
+    potions: u32,
+}
+
+impl Inventory {
+    fn add(&mut self, kind: ItemKind) {
+        match kind {
+            ItemKind::Gem => self.gems += 1,
+            ItemKind::Key => self.keys += 1,
+            ItemKind::Potion => self.potions += 1,
+        }
+    }
+}
+
+#[derive(Resource, Default)]
+struct DialogueState {
+    active_npc: Option<Entity>,
+    line_index: usize,
 }
 
 #[derive(Resource)]
@@ -251,11 +356,11 @@ struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    fn new(assets: &SpriteAssets) -> Self {
+    fn new(position: Vec3, assets: &SpriteAssets) -> Self {
         Self {
             gameplay: GameplayEntity,
             player: Player,
-            body: BodyBundle::new(Vec3::new(-260.0, -120.0, 3.0), PLAYER_SIZE),
+            body: BodyBundle::new(position, PLAYER_SIZE),
             facing: Facing(Vec2::X),
             health: Health { current: 5, max: 5 },
             animation: PlayerAnimation::default(),
@@ -296,20 +401,22 @@ impl EnemyBundle {
 }
 
 #[derive(Bundle)]
-struct CollectibleBundle {
+struct ItemBundle {
     gameplay: GameplayEntity,
-    collectible: Collectible,
+    scene: SceneEntity,
+    item: InventoryItem,
     body: StaticBodyBundle,
     sprite: Sprite,
 }
 
-impl CollectibleBundle {
-    fn new(position: Vec3, assets: &SpriteAssets) -> Self {
+impl ItemBundle {
+    fn new(kind: ItemKind, position: Vec3, assets: &SpriteAssets) -> Self {
         Self {
             gameplay: GameplayEntity,
-            collectible: Collectible,
-            body: StaticBodyBundle::new(position, GEM_SIZE),
-            sprite: Sprite::from_image(assets.gem.clone()),
+            scene: SceneEntity,
+            item: InventoryItem { kind },
+            body: StaticBodyBundle::new(position, item_size(kind)),
+            sprite: item_sprite(kind, assets),
         }
     }
 }
@@ -317,6 +424,7 @@ impl CollectibleBundle {
 #[derive(Bundle)]
 struct WallBundle {
     gameplay: GameplayEntity,
+    scene: SceneEntity,
     wall: Wall,
     body: StaticBodyBundle,
     sprite: Sprite,
@@ -326,6 +434,7 @@ impl WallBundle {
     fn new(position: Vec3, size: Vec2) -> Self {
         Self {
             gameplay: GameplayEntity,
+            scene: SceneEntity,
             wall: Wall,
             body: StaticBodyBundle::new(position, size),
             sprite: Sprite::from_color(Color::srgb(0.28, 0.33, 0.42), size),
@@ -363,13 +472,83 @@ impl AttackHitboxBundle {
     }
 }
 
+#[derive(Bundle)]
+struct ProjectileBundle {
+    gameplay: GameplayEntity,
+    projectile: Projectile,
+    body: BodyBundle,
+    sprite: Sprite,
+}
+
+impl ProjectileBundle {
+    fn new(position: Vec3, direction: Vec2) -> Self {
+        Self {
+            gameplay: GameplayEntity,
+            projectile: Projectile {
+                lifetime: Timer::from_seconds(PROJECTILE_LIFETIME, TimerMode::Once),
+                damage: 1,
+            },
+            body: BodyBundle {
+                body: Body {
+                    half_size: PROJECTILE_SIZE / 2.0,
+                },
+                velocity: Velocity(direction * PROJECTILE_SPEED),
+                transform: Transform {
+                    translation: position,
+                    rotation: Quat::from_rotation_z(direction.y.atan2(direction.x)),
+                    ..default()
+                },
+                mover: Mover,
+            },
+            sprite: Sprite::from_color(Color::srgb(1.0, 0.76, 0.25), PROJECTILE_SIZE),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct SceneData {
+    name: String,
+    player_start: [f32; 2],
+    walls: Vec<RectData>,
+    items: Vec<ItemData>,
+    npcs: Vec<NpcData>,
+}
+
+#[derive(Deserialize)]
+struct RectData {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+#[derive(Deserialize)]
+struct ItemData {
+    kind: ItemKind,
+    x: f32,
+    y: f32,
+}
+
+#[derive(Deserialize)]
+struct NpcData {
+    name: String,
+    x: f32,
+    y: f32,
+    lines: Vec<String>,
+}
+
 fn main() {
-    App::new()
-        .insert_resource(ClearColor(Color::srgb(0.07, 0.08, 0.10)))
+    let mut app = App::new();
+
+    app.insert_resource(ClearColor(Color::srgb(0.07, 0.08, 0.10)))
         .insert_resource(load_progress_from_disk())
         .init_resource::<RunStats>()
         .init_resource::<WaveSpawner>()
         .init_resource::<SaveStatus>()
+        .init_resource::<CurrentScene>()
+        .init_resource::<Inventory>()
+        .init_resource::<DialogueState>()
+        .add_message::<GameAudioEvent>()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .init_state::<GameState>()
         .configure_sets(
@@ -395,13 +574,20 @@ fn main() {
         .add_systems(Update, menu_input.run_if(in_state(GameState::Menu)))
         .add_systems(Update, start_capture_run.run_if(in_state(GameState::Menu)))
         .add_systems(Update, paused_input.run_if(in_state(GameState::Paused)))
+        .add_systems(Update, dialogue_input.run_if(in_state(GameState::Dialogue)))
         .add_systems(
             Update,
             game_over_input.run_if(in_state(GameState::GameOver)),
         )
         .add_systems(
             Update,
-            (player_input, spawn_attack_hitbox)
+            (
+                playing_state_hotkeys,
+                player_input,
+                start_dialogue,
+                spawn_attack_hitbox,
+                fire_projectile,
+            )
                 .chain()
                 .in_set(GameSet::Input)
                 .run_if(in_state(GameState::Playing)),
@@ -428,10 +614,12 @@ fn main() {
         .add_systems(
             Update,
             (
-                collect_gems,
+                collect_items,
                 attack_hits_enemies,
+                projectiles_hit_enemies,
                 enemy_hits_player,
                 expire_attack_hitboxes,
+                tick_projectile_lifetime,
                 end_game_if_dead,
             )
                 .chain()
@@ -448,17 +636,30 @@ fn main() {
             Update,
             (
                 save_load_hotkeys,
+                scene_hotkeys,
                 setup_capture_showcase,
+                play_audio_events,
                 update_health_ui,
                 update_score_ui,
                 update_wave_ui,
+                update_inventory_ui,
+                update_scene_ui,
                 update_save_ui,
+                update_dialogue_text,
             )
                 .chain()
                 .in_set(GameSet::Ui)
                 .run_if(in_state(GameState::Playing)),
         )
-        .run();
+        .add_systems(
+            Update,
+            update_dialogue_text
+                .in_set(GameSet::Ui)
+                .run_if(in_state(GameState::Dialogue)),
+        );
+
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch22-final-rpg-game.png", 20);
+    app.run();
 }
 
 fn setup_camera_and_assets(
@@ -511,10 +712,22 @@ fn menu_input(
     progress: Res<Progress>,
     mut stats: ResMut<RunStats>,
     mut spawner: ResMut<WaveSpawner>,
+    mut current: ResMut<CurrentScene>,
+    mut inventory: ResMut<Inventory>,
+    mut dialogue: ResMut<DialogueState>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Enter) {
-        start_run(&mut commands, &assets, &progress, &mut stats, &mut spawner);
+        start_run(
+            &mut commands,
+            &assets,
+            &progress,
+            &mut stats,
+            &mut spawner,
+            &mut current,
+            &mut inventory,
+            &mut dialogue,
+        );
         next_state.set(GameState::Playing);
     }
 }
@@ -526,6 +739,9 @@ fn start_capture_run(
     progress: Res<Progress>,
     mut stats: ResMut<RunStats>,
     mut spawner: ResMut<WaveSpawner>,
+    mut current: ResMut<CurrentScene>,
+    mut inventory: ResMut<Inventory>,
+    mut dialogue: ResMut<DialogueState>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if *done || !tutorial_capture_enabled() {
@@ -533,7 +749,16 @@ fn start_capture_run(
     }
     *done = true;
 
-    start_run(&mut commands, &assets, &progress, &mut stats, &mut spawner);
+    start_run(
+        &mut commands,
+        &assets,
+        &progress,
+        &mut stats,
+        &mut spawner,
+        &mut current,
+        &mut inventory,
+        &mut dialogue,
+    );
     next_state.set(GameState::Playing);
 }
 
@@ -614,10 +839,22 @@ fn game_over_input(
     progress: Res<Progress>,
     mut stats: ResMut<RunStats>,
     mut spawner: ResMut<WaveSpawner>,
+    mut current: ResMut<CurrentScene>,
+    mut inventory: ResMut<Inventory>,
+    mut dialogue: ResMut<DialogueState>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyR) {
-        start_run(&mut commands, &assets, &progress, &mut stats, &mut spawner);
+        start_run(
+            &mut commands,
+            &assets,
+            &progress,
+            &mut stats,
+            &mut spawner,
+            &mut current,
+            &mut inventory,
+            &mut dialogue,
+        );
         next_state.set(GameState::Playing);
     }
 
@@ -632,22 +869,18 @@ fn start_run(
     progress: &Progress,
     stats: &mut RunStats,
     spawner: &mut WaveSpawner,
+    current: &mut CurrentScene,
+    inventory: &mut Inventory,
+    dialogue: &mut DialogueState,
 ) {
     *stats = RunStats::default();
     stats.wave = progress.unlocked_wave.max(1);
     spawner.reset_to_wave(stats.wave);
+    *inventory = Inventory::default();
+    *dialogue = DialogueState::default();
 
-    commands.spawn(PlayerBundle::new(assets));
-    spawn_map(commands);
+    current.title = load_scene(commands, current.path, assets);
     spawn_hud(commands);
-
-    for position in [
-        Vec3::new(-120.0, 150.0, 3.0),
-        Vec3::new(250.0, -110.0, 3.0),
-        Vec3::new(340.0, 190.0, 3.0),
-    ] {
-        commands.spawn(CollectibleBundle::new(position, assets));
-    }
 }
 
 fn setup_capture_showcase(
@@ -656,22 +889,36 @@ fn setup_capture_showcase(
     assets: Res<SpriteAssets>,
     mut stats: ResMut<RunStats>,
     mut spawner: ResMut<WaveSpawner>,
+    mut inventory: ResMut<Inventory>,
+    mut dialogue: ResMut<DialogueState>,
     mut save_status: ResMut<SaveStatus>,
+    mut next_state: ResMut<NextState<GameState>>,
     player: Single<(&mut Transform, &mut Facing, &mut PlayerAnimation), With<Player>>,
+    npcs: Query<(Entity, &Transform), (With<Npc>, Without<Player>)>,
 ) {
     if *done || !tutorial_capture_enabled() {
         return;
     }
     *done = true;
 
-    stats.score = 40;
+    stats.score = 90;
     stats.wave = 2;
     spawner.wave = 2;
     spawner.remaining_to_spawn = 2;
     save_status.0 = "Progress loaded for tutorial capture".to_string();
+    inventory.gems = 2;
+    inventory.keys = 1;
+    inventory.potions = 1;
 
     let (mut player_transform, mut facing, mut animation) = player.into_inner();
-    player_transform.translation = Vec3::new(-80.0, -40.0, 3.0);
+    if let Some((npc_entity, npc_transform)) = npcs.iter().next() {
+        player_transform.translation = npc_transform.translation + Vec3::new(-58.0, -36.0, 0.0);
+        dialogue.active_npc = Some(npc_entity);
+        dialogue.line_index = 0;
+        next_state.set(GameState::Dialogue);
+    } else {
+        player_transform.translation = Vec3::new(-80.0, -40.0, 3.0);
+    }
     facing.0 = Vec2::X;
     animation.state = PlayerAnimState::Attack;
     animation.attack_timer = Timer::from_seconds(30.0, TimerMode::Once);
@@ -683,6 +930,8 @@ fn setup_capture_showcase(
     ] {
         commands.spawn(EnemyBundle::new(position, 2, &assets));
     }
+
+    commands.spawn(ProjectileBundle::new(Vec3::new(35.0, -40.0, 4.0), Vec2::X));
 
     let hitbox_position = player_transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
     commands.spawn((
@@ -701,6 +950,15 @@ fn setup_capture_showcase(
             ..default()
         },
     ));
+}
+
+fn playing_state_hotkeys(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::KeyP) {
+        next_state.set(GameState::Paused);
+    }
 }
 
 fn player_input(
@@ -746,6 +1004,7 @@ fn spawn_attack_hitbox(
     keyboard: Res<ButtonInput<KeyCode>>,
     assets: Res<SpriteAssets>,
     player: Single<(&Transform, &Facing, &mut PlayerAnimation), With<Player>>,
+    mut audio_events: MessageWriter<GameAudioEvent>,
 ) {
     if !keyboard.just_pressed(KeyCode::Space) {
         return;
@@ -759,6 +1018,89 @@ fn spawn_attack_hitbox(
     let angle = facing.0.y.atan2(facing.0.x);
 
     commands.spawn(AttackHitboxBundle::new(position, angle, &assets));
+    audio_events.write(GameAudioEvent::Attack);
+}
+
+fn fire_projectile(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    player: Single<(&Transform, &Facing), With<Player>>,
+    mut audio_events: MessageWriter<GameAudioEvent>,
+) {
+    if !keyboard.just_pressed(KeyCode::KeyF) {
+        return;
+    }
+
+    let (transform, facing) = *player;
+    let position = transform.translation + (facing.0 * 34.0).extend(1.0);
+    commands.spawn(ProjectileBundle::new(position, facing.0));
+    audio_events.write(GameAudioEvent::Projectile);
+}
+
+fn start_dialogue(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    player: Single<&Transform, With<Player>>,
+    npcs: Query<(Entity, &Transform), (With<Npc>, Without<Player>)>,
+    mut dialogue: ResMut<DialogueState>,
+    mut audio_events: MessageWriter<GameAudioEvent>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if !keyboard.just_pressed(KeyCode::KeyE) {
+        return;
+    }
+
+    let nearest = npcs.iter().find(|(_, transform)| {
+        player
+            .translation
+            .truncate()
+            .distance(transform.translation.truncate())
+            <= INTERACT_DISTANCE
+    });
+
+    if let Some((entity, _)) = nearest {
+        dialogue.active_npc = Some(entity);
+        dialogue.line_index = 0;
+        audio_events.write(GameAudioEvent::Dialogue);
+        next_state.set(GameState::Dialogue);
+    }
+}
+
+fn dialogue_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    npcs: Query<&Npc>,
+    mut dialogue: ResMut<DialogueState>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        dialogue.active_npc = None;
+        dialogue.line_index = 0;
+        next_state.set(GameState::Playing);
+        return;
+    }
+
+    if !keyboard.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    let Some(active_npc) = dialogue.active_npc else {
+        next_state.set(GameState::Playing);
+        return;
+    };
+
+    let Ok(npc) = npcs.get(active_npc) else {
+        dialogue.active_npc = None;
+        dialogue.line_index = 0;
+        next_state.set(GameState::Playing);
+        return;
+    };
+
+    dialogue.line_index += 1;
+
+    if dialogue.line_index >= npc.lines.len() {
+        dialogue.active_npc = None;
+        dialogue.line_index = 0;
+        next_state.set(GameState::Playing);
+    }
 }
 
 fn spawn_enemy_waves(
@@ -866,18 +1208,22 @@ fn smooth_follow_camera(
     camera.translation = camera.translation.lerp(target, blend);
 }
 
-fn collect_gems(
+fn collect_items(
     mut commands: Commands,
     mut stats: ResMut<RunStats>,
+    mut inventory: ResMut<Inventory>,
     player: Single<(&Transform, &Body), With<Player>>,
-    gems: Query<(Entity, &Transform, &Body), With<Collectible>>,
+    items: Query<(Entity, &Transform, &Body, &InventoryItem)>,
+    mut audio_events: MessageWriter<GameAudioEvent>,
 ) {
     let (player_transform, player_body) = *player;
 
-    for (entity, gem_transform, gem_body) in &gems {
-        if overlaps(player_transform, player_body, gem_transform, gem_body) {
+    for (entity, item_transform, item_body, item) in &items {
+        if overlaps(player_transform, player_body, item_transform, item_body) {
             commands.entity(entity).despawn();
-            stats.score += 10;
+            inventory.add(item.kind);
+            stats.score += item.kind.score_value();
+            audio_events.write(GameAudioEvent::Pickup);
         }
     }
 }
@@ -916,11 +1262,47 @@ fn attack_hits_enemies(
     }
 }
 
+fn projectiles_hit_enemies(
+    mut commands: Commands,
+    mut stats: ResMut<RunStats>,
+    projectiles: Query<(Entity, &Transform, &Body, &Projectile)>,
+    mut enemies: Query<(Entity, &Transform, &Body, &mut Health), With<Enemy>>,
+) {
+    let mut defeated_enemies = Vec::new();
+
+    for (projectile_entity, projectile_transform, projectile_body, projectile) in &projectiles {
+        for (enemy_entity, enemy_transform, enemy_body, mut health) in &mut enemies {
+            if defeated_enemies.contains(&enemy_entity) {
+                continue;
+            }
+
+            if overlaps(
+                projectile_transform,
+                projectile_body,
+                enemy_transform,
+                enemy_body,
+            ) {
+                health.current -= projectile.damage;
+                commands.entity(projectile_entity).despawn();
+
+                if health.current <= 0 {
+                    commands.entity(enemy_entity).despawn();
+                    defeated_enemies.push(enemy_entity);
+                    stats.score += 25;
+                }
+
+                break;
+            }
+        }
+    }
+}
+
 fn enemy_hits_player(
     time: Res<Time>,
     player: Single<(&Transform, &Body, &mut Health), With<Player>>,
     enemies: Query<(&Transform, &Body), With<Enemy>>,
     mut cooldown: Local<f32>,
+    mut audio_events: MessageWriter<GameAudioEvent>,
 ) {
     *cooldown -= time.delta_secs();
 
@@ -934,6 +1316,7 @@ fn enemy_hits_player(
         if overlaps(player_transform, player_body, enemy_transform, enemy_body) {
             health.current = (health.current - 1).max(0);
             *cooldown = 0.85;
+            audio_events.write(GameAudioEvent::Hurt);
             break;
         }
     }
@@ -948,6 +1331,20 @@ fn expire_attack_hitboxes(
         hitbox.lifetime.tick(time.delta());
 
         if hitbox.lifetime.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn tick_projectile_lifetime(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut projectiles: Query<(Entity, &mut Projectile)>,
+) {
+    for (entity, mut projectile) in &mut projectiles {
+        projectile.lifetime.tick(time.delta());
+
+        if projectile.lifetime.is_finished() {
             commands.entity(entity).despawn();
         }
     }
@@ -1019,6 +1416,68 @@ fn save_load_hotkeys(
     }
 }
 
+fn scene_hotkeys(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    assets: Res<SpriteAssets>,
+    progress: Res<Progress>,
+    gameplay: Query<Entity, With<GameplayEntity>>,
+    mut current: ResMut<CurrentScene>,
+    mut stats: ResMut<RunStats>,
+    mut spawner: ResMut<WaveSpawner>,
+    mut inventory: ResMut<Inventory>,
+    mut dialogue: ResMut<DialogueState>,
+) {
+    let next_path = if keyboard.just_pressed(KeyCode::Digit1) {
+        Some("scenes/arena_a.json")
+    } else if keyboard.just_pressed(KeyCode::Digit2) {
+        Some("scenes/arena_b.json")
+    } else {
+        None
+    };
+
+    let Some(path) = next_path else {
+        return;
+    };
+
+    for entity in &gameplay {
+        commands.entity(entity).despawn();
+    }
+
+    current.path = path;
+    start_run(
+        &mut commands,
+        &assets,
+        &progress,
+        &mut stats,
+        &mut spawner,
+        &mut current,
+        &mut inventory,
+        &mut dialogue,
+    );
+}
+
+fn play_audio_events(
+    mut commands: Commands,
+    mut pitch_assets: ResMut<Assets<Pitch>>,
+    mut events: MessageReader<GameAudioEvent>,
+) {
+    for event in events.read() {
+        let frequency = match event {
+            GameAudioEvent::Attack => 360.0,
+            GameAudioEvent::Projectile => 520.0,
+            GameAudioEvent::Pickup => 760.0,
+            GameAudioEvent::Hurt => 180.0,
+            GameAudioEvent::Dialogue => 440.0,
+        };
+
+        commands.spawn((
+            AudioPlayer(pitch_assets.add(Pitch::new(frequency, Duration::from_millis(110)))),
+            PlaybackSettings::DESPAWN,
+        ));
+    }
+}
+
 fn update_health_ui(
     player: Single<&Health, With<Player>>,
     mut health_text: Single<&mut Text, With<HudHealthText>>,
@@ -1050,11 +1509,56 @@ fn update_wave_ui(
     );
 }
 
+fn update_inventory_ui(
+    inventory: Res<Inventory>,
+    mut inventory_text: Single<&mut Text, With<HudInventoryText>>,
+) {
+    inventory_text.0 = format!(
+        "Inventory: gems {} | keys {} | potions {}",
+        inventory.gems, inventory.keys, inventory.potions
+    );
+}
+
+fn update_scene_ui(
+    current: Res<CurrentScene>,
+    mut scene_text: Single<&mut Text, With<HudSceneText>>,
+) {
+    scene_text.0 = format!("Scene: {} | 1/2 swap | E talk | F fire", current.title);
+}
+
 fn update_save_ui(
     save_status: Res<SaveStatus>,
     mut save_text: Single<&mut Text, With<HudSaveText>>,
 ) {
     save_text.0 = format!("F5: save progress | {}", save_status.0);
+}
+
+fn update_dialogue_text(
+    dialogue: Res<DialogueState>,
+    npcs: Query<&Npc>,
+    panel: Single<(&mut Text, &mut Node), With<DialogueText>>,
+) {
+    let (mut text, mut node) = panel.into_inner();
+
+    let Some(entity) = dialogue.active_npc else {
+        text.0.clear();
+        node.display = Display::None;
+        return;
+    };
+
+    let Ok(npc) = npcs.get(entity) else {
+        text.0.clear();
+        node.display = Display::None;
+        return;
+    };
+
+    let line = npc
+        .lines
+        .get(dialogue.line_index)
+        .map(String::as_str)
+        .unwrap_or("");
+    text.0 = format!("{}:\n{}\n\nSpace: continue | Esc: close", npc.name, line);
+    node.display = Display::Flex;
 }
 
 fn overlaps(
@@ -1071,7 +1575,106 @@ fn overlaps(
     distance.x < allowed.x && distance.y < allowed.y
 }
 
-fn spawn_map(commands: &mut Commands) {
+fn load_scene(commands: &mut Commands, asset_path: &str, assets: &SpriteAssets) -> String {
+    let fs_path = format!("assets/{asset_path}");
+    let text = match fs::read_to_string(&fs_path) {
+        Ok(text) => text,
+        Err(error) => {
+            spawn_fallback_scene(commands, assets);
+            return format!("Fallback scene: {error}");
+        }
+    };
+
+    let scene = match serde_json::from_str::<SceneData>(&text) {
+        Ok(scene) => scene,
+        Err(error) => {
+            spawn_fallback_scene(commands, assets);
+            return format!("Fallback scene: {error}");
+        }
+    };
+
+    spawn_scene(commands, &scene, assets);
+    scene.name
+}
+
+fn spawn_scene(commands: &mut Commands, scene: &SceneData, assets: &SpriteAssets) {
+    spawn_floor(commands);
+    commands.spawn((
+        SceneEntity,
+        PlayerBundle::new(
+            Vec3::new(scene.player_start[0], scene.player_start[1], 3.0),
+            assets,
+        ),
+    ));
+
+    for wall in &scene.walls {
+        commands.spawn(WallBundle::new(
+            Vec3::new(wall.x, wall.y, 2.0),
+            Vec2::new(wall.w, wall.h),
+        ));
+    }
+
+    for item in &scene.items {
+        commands.spawn(ItemBundle::new(
+            item.kind,
+            Vec3::new(item.x, item.y, 3.0),
+            assets,
+        ));
+    }
+
+    for npc in &scene.npcs {
+        commands.spawn((
+            GameplayEntity,
+            SceneEntity,
+            Npc {
+                name: npc.name.clone(),
+                lines: npc.lines.clone(),
+            },
+            Body {
+                half_size: PLAYER_SIZE / 2.0,
+            },
+            Sprite {
+                image: assets.player_sheet.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: assets.player_layout.clone(),
+                    index: 1,
+                }),
+                color: Color::srgb(1.0, 0.80, 0.34),
+                ..default()
+            },
+            Transform::from_xyz(npc.x, npc.y, 3.0),
+        ));
+
+        commands.spawn((
+            GameplayEntity,
+            SceneEntity,
+            Text2d::new(npc.name.clone()),
+            TextFont::from_font_size(18.0),
+            TextColor(Color::srgb(0.78, 0.86, 0.98)),
+            TextLayout::new_with_justify(Justify::Center),
+            Transform::from_xyz(npc.x, npc.y + 42.0, 4.0),
+        ));
+    }
+}
+
+fn spawn_fallback_scene(commands: &mut Commands, assets: &SpriteAssets) {
+    spawn_floor(commands);
+    commands.spawn((
+        SceneEntity,
+        PlayerBundle::new(Vec3::new(-260.0, -120.0, 3.0), assets),
+    ));
+
+    for (position, size) in [
+        (Vec3::new(0.0, 300.0, 2.0), Vec2::new(900.0, 40.0)),
+        (Vec3::new(0.0, -300.0, 2.0), Vec2::new(900.0, 40.0)),
+        (Vec3::new(-460.0, 0.0, 2.0), Vec2::new(40.0, 640.0)),
+        (Vec3::new(460.0, 0.0, 2.0), Vec2::new(40.0, 640.0)),
+    ] {
+        commands.spawn(WallBundle::new(position, size));
+    }
+}
+
+fn spawn_floor(commands: &mut Commands) {
     let tile_size = Vec2::splat(80.0);
 
     for x in -5..=5 {
@@ -1084,22 +1687,26 @@ fn spawn_map(commands: &mut Commands) {
 
             commands.spawn((
                 GameplayEntity,
+                SceneEntity,
                 Sprite::from_color(color, tile_size - Vec2::splat(2.0)),
                 Transform::from_xyz(x as f32 * tile_size.x, y as f32 * tile_size.y, 0.0),
             ));
         }
     }
+}
 
-    for (position, size) in [
-        (Vec3::new(0.0, 300.0, 2.0), Vec2::new(900.0, 40.0)),
-        (Vec3::new(0.0, -300.0, 2.0), Vec2::new(900.0, 40.0)),
-        (Vec3::new(-460.0, 0.0, 2.0), Vec2::new(40.0, 640.0)),
-        (Vec3::new(460.0, 0.0, 2.0), Vec2::new(40.0, 640.0)),
-        (Vec3::new(-120.0, 70.0, 2.0), Vec2::new(240.0, 36.0)),
-        (Vec3::new(210.0, -110.0, 2.0), Vec2::new(250.0, 36.0)),
-        (Vec3::new(80.0, 145.0, 2.0), Vec2::new(36.0, 210.0)),
-    ] {
-        commands.spawn(WallBundle::new(position, size));
+fn item_size(kind: ItemKind) -> Vec2 {
+    match kind {
+        ItemKind::Gem => GEM_SIZE,
+        ItemKind::Key => KEY_SIZE,
+        ItemKind::Potion => POTION_SIZE,
+    }
+}
+
+fn item_sprite(kind: ItemKind, assets: &SpriteAssets) -> Sprite {
+    match kind {
+        ItemKind::Gem => Sprite::from_image(assets.gem.clone()),
+        ItemKind::Key | ItemKind::Potion => Sprite::from_color(kind.color(), item_size(kind)),
     }
 }
 
@@ -1176,7 +1783,7 @@ fn spawn_hud(commands: &mut Commands) {
     commands.spawn((
         GameplayEntity,
         HudSaveText,
-        Text::new("F5: save progress"),
+        Text::new("F5 save | F9 load | P pause"),
         TextFont::from_font_size(18.0),
         TextColor(Color::srgb(0.82, 0.86, 0.92)),
         Node {
@@ -1185,6 +1792,53 @@ fn spawn_hud(commands: &mut Commands) {
             left: px(16),
             ..default()
         },
+    ));
+
+    commands.spawn((
+        GameplayEntity,
+        HudInventoryText,
+        Text::new("Inventory G0 K0 P0"),
+        TextFont::from_font_size(20.0),
+        TextColor(Color::srgb(1.0, 0.90, 0.56)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(150),
+            left: px(16),
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        GameplayEntity,
+        HudSceneText,
+        Text::new("Scene"),
+        TextFont::from_font_size(18.0),
+        TextColor(Color::srgb(0.78, 0.86, 0.98)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(176),
+            left: px(16),
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        GameplayEntity,
+        DialogueText,
+        Text::new(""),
+        TextFont::from_font_size(24.0),
+        TextColor(Color::srgb(1.0, 0.92, 0.62)),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: px(28),
+            left: px(36),
+            right: px(36),
+            padding: UiRect::axes(px(18), px(14)),
+            border: UiRect::all(px(1)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.045, 0.055, 0.075, 0.90)),
+        BorderColor::all(Color::srgba(0.36, 0.45, 0.58, 0.75)),
     ));
 }
 

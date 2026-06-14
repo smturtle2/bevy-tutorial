@@ -205,7 +205,7 @@ fn main() {
                 .run_if(in_state(GameState::Playing)),
         );
 
-    add_tutorial_screenshot(&mut app, "assets/screenshots/ch19-inventory.png", 20);
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch18-inventory.png", 20);
     app.run();
 }
 

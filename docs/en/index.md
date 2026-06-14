@@ -10,11 +10,11 @@
 
 ---
 
-This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, grows into a playable combat loop, then explores standalone expansion examples for projectiles, inventory, dialogue, audio events, and scene loading with explicit integration points.
+This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, grows through one focused RPG system at a time, then ends by integrating those systems into one playable final game.
 
 The learning loop is practical: build one working slice, run it, change one rule, then read the Rust and Bevy contracts that made that slice work.
 
-![Integrated RPG tutorial preview](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+![Final RPG game tutorial preview](../../assets/screenshots/ch22-final-rpg-game.png)
 
 ## How This Tutorial Teaches
 
@@ -53,8 +53,8 @@ This tutorial uses its own code and its own RPG project, but it keeps the same p
 | Presentation | 6 | Image assets, camera follow, and world-space text |
 | RPG foundation | 7 | A compact playable arena with movement, enemies, pickups, health, score, and HUD |
 | RPG systems | 8-16 | Camera smoothing, waves, attacks, sprite assets, fixed HUD, animation, map collision, states, save/load |
-| Core integration | 17 | A playable RPG checkpoint using the combat-loop systems from the track |
-| RPG expansion examples | 18-22 | Focused projectiles, inventory, dialogue, audio events, and scene loading with explicit integration points |
+| Advanced RPG systems | 17-21 | Projectiles, inventory, dialogue, audio events, and scene-loaded maps |
+| Final game | 22 | One playable RPG that integrates the full tutorial |
 
 ## Track Structure
 
@@ -63,11 +63,11 @@ The tutorial has three structural turns:
 ```text
 0-6      Rust, App, ECS, bundles, plugins, assets, camera, UI
 7-16     individual RPG systems with focused examples
-17       integrated RPG checkpoint
-18-22    focused expansion examples with explicit integration points
+17-21    advanced RPG systems that complete the feature set
+22       final integrated RPG game
 ```
 
-From chapter 18 onward, each example stays runnable on its own and carries over only the contracts that feature uses: combat data for projectiles, score plus inventory data for pickups, state data for dialogue, typed messages for audio, and loaded components for scenes.
+Chapters 17-21 stay runnable on their own so each feature remains readable. Chapter 22 then combines those contracts into one game: melee, projectiles, inventory, dialogue, audio events, loaded scenes, states, HUD, enemy waves, animation, collision, and saving.
 
 ## Chapters
 
@@ -88,12 +88,12 @@ From chapter 18 onward, each example stays runnable on its own and carries over 
 14. [Handmade map geometry](14-handmade-map-geometry.md)
 15. [Game states](15-game-states.md)
 16. [Save and load progress](16-save-load-progress.md)
-17. [Integrated RPG slice](17-complete-rpg-slice.md)
-18. [Projectiles](18-projectiles.md)
-19. [Inventory](19-inventory.md)
-20. [Dialogue](20-dialogue.md)
-21. [Audio events](21-audio-events.md)
-22. [Scene loading](22-scene-loading.md)
+17. [Projectiles](17-projectiles.md)
+18. [Inventory](18-inventory.md)
+19. [Dialogue](19-dialogue.md)
+20. [Audio events](20-audio-events.md)
+21. [Scene loading](21-scene-loading.md)
+22. [Final RPG game](22-final-rpg-game.md)
 
 ## Run The Examples
 
@@ -116,12 +116,12 @@ cargo run --example 13_animation_state
 cargo run --example 14_handmade_map_geometry
 cargo run --example 15_game_states
 cargo run --example 16_save_load_progress
-cargo run --example 17_complete_rpg_slice
-cargo run --example 18_projectiles
-cargo run --example 19_inventory
-cargo run --example 20_dialogue
-cargo run --example 21_audio_events
-cargo run --example 22_scene_loading
+cargo run --example 17_projectiles
+cargo run --example 18_inventory
+cargo run --example 19_dialogue
+cargo run --example 20_audio_events
+cargo run --example 21_scene_loading
+cargo run --example 22_final_rpg_game
 ```
 
 ## Core Mental Model

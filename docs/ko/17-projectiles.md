@@ -1,8 +1,8 @@
-# 18. 발사체
+# 17. 발사체
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 통합 RPG 예제](17-complete-rpg-slice.md) · [다음: 인벤토리 →](19-inventory.md)
+[목차](index.md) · [← 이전: 진행도 저장과 불러오기](16-save-load-progress.md) · [다음: 인벤토리 →](18-inventory.md)
 
 </div>
 
@@ -10,14 +10,14 @@
 
 ## 이 장에서 만들 것
 
-17장의 전투 루프에 원거리 공격을 추가합니다. `Space`는 그대로 근접 베기 공격이고, `F`를 누르면 플레이어가 바라보는 방향으로 발사체를 쏩니다. 두 공격은 같은 체력 모델, 충돌 크기 모델, 게임플레이 정리 마커, 시스템 순서 계약을 사용합니다.
+전투 루프에 원거리 공격을 추가합니다. `Space`는 그대로 근접 베기 공격이고, `F`를 누르면 플레이어가 바라보는 방향으로 발사체를 쏩니다. 두 공격은 같은 체력 모델, 충돌 크기 모델, 게임플레이 정리 마커, 시스템 순서 계약을 사용합니다.
 
-![플레이어가 적을 향해 발사체를 쏘는 장면](../../assets/screenshots/ch18-projectiles.png)
+![플레이어가 적을 향해 발사체를 쏘는 장면](../../assets/screenshots/ch17-projectiles.png)
 
 ## 실행
 
 ```sh
-cargo run --example 18_projectiles
+cargo run --example 17_projectiles
 ```
 
 조작:
@@ -65,7 +65,7 @@ struct Projectile {
 
 ## 구현 흐름 2: 근접 공격과 원거리 공격 입력 분리하기
 
-통합 예제에서 `Space`는 이미 베기 히트박스 입력입니다. 그래서 발사체는 `F`에 둡니다.
+근접 공격 장에서 `Space`는 이미 베기 히트박스 입력입니다. 그래서 발사체는 `F`에 둡니다.
 
 ```rust
 if !keyboard.just_pressed(KeyCode::KeyF) {
@@ -123,7 +123,7 @@ fn tick_projectile_lifetime(
 
 ## 구현 흐름 5: 같은 체력 계약 재사용하기
 
-발사체 충돌은 통합 예제의 `Health { current, max }` 구조를 그대로 수정합니다.
+발사체 충돌은 전투 루프의 `Health { current, max }` 구조를 그대로 수정합니다.
 
 ```rust
 if overlaps(projectile_transform, projectile_body, enemy_transform, enemy_body) {
@@ -140,7 +140,7 @@ if overlaps(projectile_transform, projectile_body, enemy_transform, enemy_body) 
 
 ## 통합 지점
 
-이 기능은 17장의 전투 루프에서 필요한 단계만 사용합니다.
+이 기능은 공용 전투 루프에서 필요한 단계만 사용합니다.
 
 ```text
 Input       F 입력을 읽고 ProjectileBundle 생성
@@ -189,7 +189,7 @@ let normalized = direction.normalize_or_zero();
 실행합니다.
 
 ```sh
-cargo run --example 18_projectiles
+cargo run --example 17_projectiles
 ```
 
 확인 기준:
@@ -221,6 +221,6 @@ const PROJECTILE_LIFETIME: f32 = 2.0;
 
 <div align="center">
 
-[← 이전: 통합 RPG 예제](17-complete-rpg-slice.md) · [목차](index.md) · [다음: 인벤토리 →](19-inventory.md)
+[← 이전: 진행도 저장과 불러오기](16-save-load-progress.md) · [목차](index.md) · [다음: 인벤토리 →](18-inventory.md)
 
 </div>

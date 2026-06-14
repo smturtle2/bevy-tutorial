@@ -1,8 +1,8 @@
-# 20. Dialogue
+# 19. Dialogue
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Inventory](19-inventory.md) · [Next: Audio events →](21-audio-events.md)
+[Index](index.md) · [← Previous: Inventory](18-inventory.md) · [Next: Audio events →](20-audio-events.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 This chapter adds a dialogue mode to the RPG loop. NPCs own their static lines. `DialogueState` records the current conversation. `GameState::Dialogue` pauses normal movement while dialogue input advances or closes the conversation.
 
-![A dialogue panel opens when the player talks to an NPC.](../../assets/screenshots/ch20-dialogue.png)
+![A dialogue panel opens when the player talks to an NPC.](../../assets/screenshots/ch19-dialogue.png)
 
 ## Run
 
 ```sh
-cargo run --example 20_dialogue
+cargo run --example 19_dialogue
 ```
 
 Controls:
@@ -81,7 +81,7 @@ arrays of hard-coded lines          &'static [&'static str]
 scene-loaded dialogue lines         Vec<String>
 ```
 
-Chapter 22 uses `Vec<String>` because JSON parsing creates owned strings at runtime.
+Chapter 21 uses `Vec<String>` because JSON parsing creates owned strings at runtime.
 
 ## Build Step 3: Store The Current Conversation
 
@@ -182,7 +182,7 @@ The apostrophe syntax names how long a borrow is valid. `'static` means the data
 Run:
 
 ```sh
-cargo run --example 20_dialogue
+cargo run --example 19_dialogue
 ```
 
 Expected result:
@@ -207,6 +207,6 @@ Expected result: `Space` now advances through one more line for that NPC.
 
 <div align="center">
 
-[← Previous: Inventory](19-inventory.md) · [Index](index.md) · [Next: Audio events →](21-audio-events.md)
+[← Previous: Inventory](18-inventory.md) · [Index](index.md) · [Next: Audio events →](20-audio-events.md)
 
 </div>

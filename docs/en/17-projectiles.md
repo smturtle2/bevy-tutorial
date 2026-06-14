@@ -1,8 +1,8 @@
-# 18. Projectiles
+# 17. Projectiles
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Integrated RPG slice](17-complete-rpg-slice.md) · [Next: Inventory →](19-inventory.md)
+[Index](index.md) · [← Previous: Save and load progress](16-save-load-progress.md) · [Next: Inventory →](18-inventory.md)
 
 </div>
 
@@ -10,14 +10,14 @@
 
 ## Outcome
 
-This chapter extends the chapter 17 combat loop with a ranged attack. `Space` remains the melee slash. `F` fires a projectile in the player's facing direction. Both attacks use the same health model, collision body model, gameplay cleanup marker, and system-order contract.
+This chapter adds a ranged attack to the combat loop. `Space` remains the melee slash. `F` fires a projectile in the player's facing direction. Both attacks use the same health model, collision body model, gameplay cleanup marker, and system-order contract.
 
-![Projectiles travel from the player toward enemies.](../../assets/screenshots/ch18-projectiles.png)
+![Projectiles travel from the player toward enemies.](../../assets/screenshots/ch17-projectiles.png)
 
 ## Run
 
 ```sh
-cargo run --example 18_projectiles
+cargo run --example 17_projectiles
 ```
 
 Controls:
@@ -65,7 +65,7 @@ struct Projectile {
 
 ## Build Step 2: Keep Melee And Ranged Inputs Separate
 
-The integrated slice already uses `Space` for slash hitboxes. This chapter keeps that contract and puts projectiles on `F`:
+The melee chapter already uses `Space` for slash hitboxes. This chapter keeps that contract and puts projectiles on `F`:
 
 ```rust
 if !keyboard.just_pressed(KeyCode::KeyF) {
@@ -123,7 +123,7 @@ The cleanup rule belongs to the projectile feature. It should not be hidden insi
 
 ## Build Step 5: Reuse The Health Contract
 
-Projectile collision mutates the same `Health { current, max }` structure used by enemies in the integrated slice:
+Projectile collision mutates the same `Health { current, max }` structure used by enemies in the combat loop:
 
 ```rust
 if overlaps(projectile_transform, projectile_body, enemy_transform, enemy_body) {
@@ -140,7 +140,7 @@ The projectile despawns after one hit. Piercing projectiles would change this ex
 
 ## Integration Points
 
-The feature uses the frame phases it needs from the chapter 17 combat loop:
+The feature uses the frame phases it needs from the shared combat loop:
 
 ```text
 Input       read F and spawn ProjectileBundle
@@ -189,7 +189,7 @@ Normalizing a zero vector can produce an invalid numeric direction such as `NaN`
 Run:
 
 ```sh
-cargo run --example 18_projectiles
+cargo run --example 17_projectiles
 ```
 
 Expected result:
@@ -221,6 +221,6 @@ Expected result: projectiles travel farther before despawning.
 
 <div align="center">
 
-[← Previous: Integrated RPG slice](17-complete-rpg-slice.md) · [Index](index.md) · [Next: Inventory →](19-inventory.md)
+[← Previous: Save and load progress](16-save-load-progress.md) · [Index](index.md) · [Next: Inventory →](18-inventory.md)
 
 </div>

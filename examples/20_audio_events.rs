@@ -118,7 +118,7 @@ fn main() {
                 .run_if(in_state(GameState::Playing)),
         );
 
-    add_tutorial_screenshot(&mut app, "assets/screenshots/ch21-audio-events.png", 20);
+    add_tutorial_screenshot(&mut app, "assets/screenshots/ch20-audio-events.png", 20);
     app.run();
 }
 

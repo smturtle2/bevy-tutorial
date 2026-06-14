@@ -1,8 +1,8 @@
-# 21. Audio Events
+# 20. Audio Events
 
 <div align="center">
 
-[Index](index.md) · [← Previous: Dialogue](20-dialogue.md) · [Next: Scene loading →](22-scene-loading.md)
+[Index](index.md) · [← Previous: Dialogue](19-dialogue.md) · [Next: Scene loading →](21-scene-loading.md)
 
 </div>
 
@@ -12,12 +12,12 @@
 
 This chapter adds audio without letting gameplay systems know how sound is played. Attack, pickup, and hurt systems emit typed messages. One audio system reads those messages and spawns short-lived audio players.
 
-![Attack, pickup, and hurt events are staged with visible sound markers.](../../assets/screenshots/ch21-audio-events.png)
+![Attack, pickup, and hurt events are staged with visible sound markers.](../../assets/screenshots/ch20-audio-events.png)
 
 ## Run
 
 ```sh
-cargo run --example 21_audio_events
+cargo run --example 20_audio_events
 ```
 
 Controls:
@@ -184,7 +184,7 @@ Those system parameters say exactly which event stream the system writes or read
 Run:
 
 ```sh
-cargo run --example 21_audio_events
+cargo run --example 20_audio_events
 ```
 
 Expected result:
@@ -215,6 +215,6 @@ Expected result: pickup sounds become higher pitched without changing the pickup
 
 <div align="center">
 
-[← Previous: Dialogue](20-dialogue.md) · [Index](index.md) · [Next: Scene loading →](22-scene-loading.md)
+[← Previous: Dialogue](19-dialogue.md) · [Index](index.md) · [Next: Scene loading →](21-scene-loading.md)
 
 </div>
