@@ -30,7 +30,7 @@ cargo run --example 08_smooth_camera_follow
 
 ## Rust 포인트
 
-`let Ok(target_transform) = targets.get(follow.target) else { continue; };`는 실패 가능한 조회를 명시적으로 처리합니다. 대상 엔티티가 삭제되었을 수도 있으므로 `unwrap()`으로 가정하지 않습니다. ECS에서는 엔티티 수명이 런타임에 바뀌기 때문에 이런 방어가 중요합니다.
+`let Ok(target_transform) = targets.get(follow.target) else { continue; };`는 실패 가능한 조회를 명시적으로 처리합니다. ECS에서는 엔티티 수명이 런타임에 바뀌므로, 대상이 없는 경우도 시스템 흐름 안에서 다루고 다음 카메라로 넘어갑니다.
 
 `Vec3::lerp(target, blend)`는 현재 값과 목표 값 사이의 값을 만듭니다. `blend`는 `1.0 - (-smoothness * delta).exp()`로 계산되어 프레임 시간이 달라도 비슷한 감속 느낌을 냅니다.
 
@@ -53,7 +53,7 @@ cargo run --example 08_smooth_camera_follow
 - `CameraFollow.target`에 카메라 자신의 엔티티를 넣으면 카메라가 플레이어를 따라가지 않습니다.
 - `smooth_follow_camera`를 `move_player`보다 먼저 실행하면 카메라가 한 프레임 늦게 반응합니다.
 - 카메라의 z값까지 플레이어 z값으로 바꾸면 렌더링 순서가 의도와 달라질 수 있습니다. 예제는 카메라의 기존 z값을 유지합니다.
-- 대상 엔티티가 항상 존재한다고 가정하지 마세요. 상태 전환이나 게임오버 정리에서 플레이어가 사라질 수 있습니다.
+- 대상 엔티티 조회는 `Query::get`으로 처리하면 상태 전환이나 게임오버 정리 뒤에도 시스템 흐름이 명확합니다.
 
 ## 작게 바꿔보기
 

@@ -19,7 +19,7 @@ This chapter explains the vocabulary you need before the movement examples becom
 
 An entity is an ID in the world.
 
-It does not inherently have position, health, velocity, rendering, or behavior. It only has the components you attach to it.
+Components give an entity position, health, velocity, rendering, or behavior. The entity itself is the ID those components attach to.
 
 In `examples/02_spawn_sprite.rs`, this line creates one entity:
 
@@ -76,7 +76,7 @@ commands.spawn((
 
 This creates one entity and attaches three components.
 
-The tuple order is not the identity of the entity. The component types are. A query asks for entities by component shape, not by spawn order.
+Component types define the entity shape. A query asks for entities by component shape rather than by spawn order.
 
 ## Query Basics
 
@@ -133,7 +133,7 @@ Query<&Transform, With<Player>>
 Query<&mut Transform, With<Camera2d>>
 ```
 
-Both queries access `Transform`. Bevy cannot assume the player is never also the camera. Add filters to prove the sets are separate:
+Both queries access `Transform`. Add filters to prove the player set and camera set are separate:
 
 ```rust
 Query<&Transform, (With<Player>, Without<Camera2d>)>
@@ -181,7 +181,7 @@ In this tutorial:
 
 ## `Local`
 
-`Local<T>` stores system-local state. It is not a component and not a global resource. Each system that requests a `Local<T>` gets its own persisted value.
+`Local<T>` stores system-local state. Each system that requests a `Local<T>` gets its own persisted value.
 
 The final example uses it for hit cooldown:
 
@@ -196,7 +196,7 @@ fn enemy_hits_player(
 
 The `*` dereferences the local wrapper so the inner `f32` can be changed.
 
-Use `Local` when the state belongs only to one system and does not need to be inspected by other systems.
+Use `Local` when the state belongs to one system and stays private to that system.
 
 ## `Single`
 
@@ -238,9 +238,9 @@ Reads Time.
 Finds entities with Body, Transform, and Velocity.
 Mutates Transform.
 Reads Velocity.
-Does not spawn or despawn entities.
-Does not read keyboard input.
-Does not touch health or score.
+Leaves entity creation and removal to other systems.
+Leaves keyboard input to other systems.
+Leaves health and score to other systems.
 ```
 
 That is why Bevy code becomes easier when systems stay small.

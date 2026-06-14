@@ -167,7 +167,7 @@ struct Velocity(Vec2);
 
 `Body` marks entities that can be moved by the movement system. `Velocity` stores their movement direction.
 
-The input system no longer touches `Transform`:
+The input system writes `Velocity`:
 
 ```rust
 fn handle_player_input(
@@ -182,7 +182,7 @@ fn handle_player_input(
 }
 ```
 
-The movement system no longer knows about keyboard input:
+The movement system reads `Velocity` and writes `Transform`:
 
 ```rust
 fn move_bodies(
@@ -217,7 +217,7 @@ move_bodies reads Velocity
 
 `.chain()` tells Bevy to run them in that order. Without ordering, Bevy is free to run compatible systems in an order chosen by the scheduler.
 
-Later, when systems live in different plugins, the tutorial switches to `SystemSet`.
+When systems live in different plugins, `SystemSet` expresses the same ordering contract across plugin boundaries.
 
 ## Exercise
 
@@ -227,7 +227,7 @@ In a local experiment:
 2. Remove `.chain()` and observe whether movement still appears correct.
 3. Add a second spawned `PlayerBundle::new()` and think about what `Query<&mut Velocity, With<Player>>` will do.
 
-The important question is not only "does it move?" The important question is "which entities does each system affect?"
+The first question is "does it move?" The stronger ECS question is "which entities does each system affect?"
 
 ## Common Mistakes
 

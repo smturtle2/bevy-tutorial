@@ -19,13 +19,13 @@ cargo run --example 09_enemy_waves
 
 이 장의 계약은 웨이브 진행 상태를 리소스로 두고, 타이머가 끝날 때마다 적을 생성하는 것입니다. 적은 플레이어 위치를 읽어 속도를 정하고, 이동 시스템은 속도를 위치에 반영합니다.
 
-이 장은 전투 장이 아닙니다. 그래서 적은 `EnemyLifetime`이 끝나면 자동으로 사라집니다. 이 데모용 클리어 규칙 덕분에 2웨이브 이상이 실제로 도달 가능합니다.
+이 장은 웨이브 생성에 집중합니다. `EnemyLifetime(Timer)`가 각 웨이브의 클리어 조건을 제공하므로, 공격 시스템을 붙이기 전에 2웨이브 이상까지 흐름을 확인할 수 있습니다.
 
 ## 핵심 ECS 계약
 
 - `WaveSpawner`: 현재 웨이브, 남은 생성 수, 생성 지점 인덱스, 반복 `Timer`를 가진 리소스입니다.
 - `Enemy`: 적 엔티티를 구분하는 마커 컴포넌트입니다.
-- `EnemyLifetime(Timer)`: 전투를 배우기 전에 웨이브가 실제로 넘어가도록 하는 데모용 수명입니다.
+- `EnemyLifetime(Timer)`: 웨이브 진행을 확인하기 위한 수명 규칙입니다.
 - `Body { half_size }`: 충돌/경계 계산에 쓰는 크기 계약입니다.
 - `Velocity(Vec2)`: 이동 의도입니다. 입력과 AI는 이 값을 쓰고, 이동 시스템은 이 값을 읽습니다.
 - `WaveText`: 화면 텍스트 엔티티를 찾기 위한 마커입니다.
@@ -40,7 +40,7 @@ cargo run --example 09_enemy_waves
 
 ## Bevy 포인트
 
-`Timer::from_seconds(0.35, TimerMode::Repeating)`은 매 프레임 자동으로 움직이지 않습니다. 시스템 안에서 `spawner.timer.tick(time.delta())`를 호출해야 시간이 흐릅니다. `just_finished()`는 이번 프레임에 타이머가 끝났는지 알려주므로 생성 타이밍에 적합합니다.
+`Timer::from_seconds(0.35, TimerMode::Repeating)`은 반복 타이머를 만듭니다. 시스템 안에서 `spawner.timer.tick(time.delta())`를 호출하면 시간이 흐르고, `just_finished()`는 이번 프레임에 타이머가 끝났는지 알려주므로 생성 타이밍에 적합합니다.
 
 적 수는 `Query<(), With<Enemy>>`로 셉니다. 컴포넌트 데이터가 필요 없고 존재 여부만 필요할 때 빈 튜플 조회가 가볍고 의도가 분명합니다.
 
@@ -55,8 +55,8 @@ cargo run --example 09_enemy_waves
 
 ## 흔한 실수
 
-- `Timer`를 `tick`하지 않으면 `just_finished()`는 참이 되지 않습니다.
-- `remaining_to_spawn == 0`만 보고 다음 웨이브를 시작하면 아직 살아있는 적과 새 웨이브가 겹칩니다.
+- `Timer`는 매 프레임 `tick`해야 `just_finished()`가 생성 시점을 알려줍니다.
+- 다음 웨이브 시작 조건에는 `remaining_to_spawn == 0`과 살아있는 적 수를 함께 사용합니다.
 - 적을 제거하는 클리어 규칙이 없으면 2웨이브에 도달할 수 없습니다.
 - AI와 이동 순서가 바뀌면 적이 이전 프레임 속도로 움직입니다.
 - `Query<Entity, With<Enemy>>`가 필요하지 않은데 엔티티를 읽으면 코드 의도가 흐려집니다. 카운트만 필요하면 `Query<(), With<Enemy>>`로 충분합니다.

@@ -19,7 +19,7 @@ cargo run --example 10_attack_hitbox
 
 ## Contract
 
-An attack is not just a sprite. It is a short-lived entity with collision data.
+An attack is a short-lived entity with collision data and a separate visual sprite.
 
 ```text
 AttackHitbox = lifetime + damage
@@ -27,7 +27,7 @@ Body         = collision size
 Transform    = where the attack exists
 ```
 
-The visual slash image is only presentation.
+The visual slash image presents the attack; the hitbox entity owns the gameplay collision rule.
 
 ## Data Contract
 
@@ -45,7 +45,7 @@ The hitbox has its own `Body`, so the collision system can test it against enemi
 
 ## Bevy Point
 
-`Commands` queues the hitbox spawn. The hitbox does not exist until Bevy applies commands, but it will be present for later systems in the schedule after command application points.
+`Commands` queues the hitbox spawn. Bevy applies the queued spawn at command application points, and later systems in the schedule can then read the hitbox entity.
 
 The combat set chains:
 

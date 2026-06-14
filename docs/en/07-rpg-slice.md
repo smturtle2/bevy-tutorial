@@ -28,7 +28,7 @@ This foundation example combines the earlier pieces into one compact game loop:
 - health and score display
 - explicit system ordering
 
-It is not the final tutorial result. It is the base slice that later chapters extend with camera smoothing, waves, hitboxes, screen-space UI, animation state, map geometry, game states, and save/load.
+This is the base slice for the rest of the tutorial. Later chapters extend it with camera smoothing, waves, hitboxes, screen-space UI, animation state, map geometry, game states, and save/load.
 
 ## Constants
 
@@ -44,7 +44,7 @@ const MAX_HEALTH: i32 = 5;
 const ARENA_HALF_SIZE: Vec2 = Vec2::new(420.0, 260.0);
 ```
 
-These are not resources because the example does not change them at runtime. If you wanted difficulty settings or live tuning, some of these could become resources later.
+These stay as constants because they are fixed tuning values in this example. Difficulty settings or live tuning values can become resources when gameplay needs to change them at runtime.
 
 ## System Sets
 
@@ -217,7 +217,7 @@ fn spawn_arena_frame(commands: &mut Commands) {
 }
 ```
 
-This helper is not a system because it is called by `setup`. It receives `&mut Commands` and queues more spawns.
+This helper is a normal Rust function called by `setup`. It receives `&mut Commands` and queues more spawns.
 
 ## Player Input
 
@@ -235,7 +235,7 @@ fn player_input(
 }
 ```
 
-The system does not touch `Transform`. It only says what direction the player wants to move.
+The system writes movement intent into `Velocity`. Movement later turns that intent into a `Transform` change.
 
 ## Enemy AI
 
@@ -257,7 +257,7 @@ fn enemy_ai(
 
 `Single<&Transform, With<Player>>` says there must be exactly one player transform. Each enemy reads its own transform and writes its own velocity.
 
-This simple AI has no pathfinding. It just moves straight toward the player.
+This direct AI moves straight toward the player.
 
 ## Movement And Arena Clamp
 
@@ -326,7 +326,7 @@ horizontal distance < combined half widths
 vertical distance   < combined half heights
 ```
 
-It works because the example uses unrotated rectangles. It is not a general physics engine.
+This is axis-aligned rectangle collision for unrotated bodies.
 
 ## Collectibles: `Commands` And `ResMut`
 

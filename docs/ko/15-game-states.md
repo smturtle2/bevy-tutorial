@@ -27,7 +27,7 @@ cargo run --example 15_game_states
 - `run_if(in_state(...))`: 특정 상태에서만 시스템을 실행합니다.
 - `GameplayEntity`, `MenuUi`, `PauseUi`, `GameOverUi`: 정리 대상을 구분하는 마커입니다.
 
-상태 전환은 즉시 모든 코드를 점프시키는 명령이 아닙니다. 시스템은 `next_state.set(...)`으로 요청하고, Bevy가 스케줄 경계에서 상태를 바꿉니다.
+상태 전환은 요청으로 시작됩니다. 시스템은 `next_state.set(...)`을 호출하고, Bevy가 스케줄 경계에서 상태를 바꿉니다.
 
 ## Rust 포인트
 
@@ -51,10 +51,10 @@ cargo run --example 15_game_states
 
 ## 흔한 실수
 
-- 상태별 UI를 정리하지 않으면 메뉴, 일시정지, 게임오버 텍스트가 겹칩니다.
+- 상태별 UI는 `OnExit`에서 정리해 메뉴, 일시정지, 게임오버 텍스트가 한 상태에 하나씩 보이게 합니다.
 - `NextState` 대신 현재 상태 리소스를 직접 바꾸려고 하면 Bevy 상태 스케줄과 어긋납니다.
 - `run_if(in_state(GameState::Playing))`를 빼면 메뉴나 일시정지 중에도 이동 시스템이 실행됩니다.
-- 게임플레이 엔티티에 `GameplayEntity`를 빠뜨리면 상태 전환 정리에서 남습니다.
+- 게임플레이 엔티티에는 `GameplayEntity`를 붙여 상태 전환 정리 대상에 포함합니다.
 
 ## 작게 바꿔보기
 

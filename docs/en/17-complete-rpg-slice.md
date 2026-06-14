@@ -19,7 +19,7 @@ cargo run --example 17_complete_rpg_slice
 
 ## Contract
 
-This chapter does not introduce a new trick. It proves the required systems can coexist:
+This chapter integrates the required systems into one playable loop:
 
 - smooth camera follow
 - enemy wave spawning
@@ -42,9 +42,9 @@ SystemSet     orders frame phases
 GameState     decides which systems may run
 ```
 
-`GameplayEntity` marks entities that should be removed when leaving a run. Pause does not remove them; it only stops gameplay systems.
+`GameplayEntity` marks entities that should be removed when leaving a run. Pause keeps them alive and stops gameplay systems.
 
-`Progress.unlocked_wave` is not only displayed. New runs start at the saved unlocked wave. `RunStats` remains the current run record, and `Progress` remains the durable record.
+`Progress.unlocked_wave` drives new run setup. New runs start at the saved unlocked wave. `RunStats` remains the current run record, and `Progress` remains the durable record.
 
 ## Frame Flow
 
@@ -79,7 +79,7 @@ State     = should this system run at all?
 SystemSet = when does this system run inside the frame?
 ```
 
-Do not replace one with the other.
+Use both: state gates system execution, and sets order the systems that are allowed to run.
 
 ## Controls
 

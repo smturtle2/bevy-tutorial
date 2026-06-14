@@ -17,7 +17,7 @@ cargo run --example 05_plugins_sets
 
 ![플러그인과 시스템 세트 예제는 GamePlugin, PlayerPlugin, BodyPlugin과 실행 순서를 보이게 둔 채 같은 플레이어 동작을 렌더링합니다.](../../assets/screenshots/ch05-plugins-sets.png)
 
-이 예제는 `04_velocity_body`처럼 동작하지만, 코드는 spawn 번들, 플러그인, 이름 있는 system set 중심으로 재구성되어 있습니다. 동작은 일부러 익숙하게 유지해서 구조에 집중할 수 있게 합니다.
+이 예제는 `04_velocity_body`의 동작을 유지하고, 코드를 spawn 번들, 플러그인, 이름 있는 system set 중심으로 재구성합니다. 익숙한 동작 덕분에 새 구조를 집중해서 볼 수 있습니다.
 
 ## Bundle을 쓰는 이유
 
@@ -56,7 +56,7 @@ impl BodyBundle {
 }
 ```
 
-`BodyBundle`은 런타임 superclass가 아닙니다. spawn 시점의 컴포넌트 패키지입니다.
+`BodyBundle`은 spawn 시점의 컴포넌트 패키지입니다.
 
 spawn 후 엔티티는 단순히 다음 컴포넌트를 가집니다.
 
@@ -66,7 +66,7 @@ Velocity
 Transform
 ```
 
-따라서 쿼리는 절대 `BodyBundle`을 요청하지 않습니다. 그 안에서 나온 컴포넌트를 요청합니다.
+쿼리는 bundle에서 나온 컴포넌트를 요청합니다.
 
 ```rust
 Query<(&mut Transform, &Velocity), With<Body>>
@@ -93,7 +93,7 @@ Transform
 Sprite
 ```
 
-이렇게 평평하게 펼쳐지기 때문에 `move_bodies`가 플레이어를 움직일 수 있습니다. 플레이어 엔티티는 런타임에 번들 객체를 담고 있지 않습니다. `Body`, `Velocity`, `Transform`을 담고 있습니다.
+이렇게 평평하게 펼쳐지기 때문에 `move_bodies`가 플레이어를 움직일 수 있습니다. 런타임의 플레이어 엔티티는 `Body`, `Velocity`, `Transform`을 담고 있습니다.
 
 ## Plugin
 
@@ -109,7 +109,7 @@ impl Plugin for PlayerPlugin {
 }
 ```
 
-플러그인은 매 프레임 실행되지 않습니다. 앱에 필요한 것들을 등록합니다.
+플러그인은 앱을 구성하는 동안 실행되어 필요한 것들을 등록합니다.
 
 `examples/05_plugins_sets.rs`에는 세 플러그인이 있습니다.
 
@@ -134,7 +134,7 @@ fn main() {
 
 ## SystemSet
 
-시스템이 서로 다른 플러그인에 있으면 한 튜플에 `.chain()`을 붙이는 것만으로는 충분하지 않습니다. set을 씁니다.
+시스템이 서로 다른 플러그인에 있으면 set으로 플러그인 경계를 넘어서는 실행 순서를 표현합니다.
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]

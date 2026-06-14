@@ -15,7 +15,7 @@ Run the first example:
 cargo run --example 01_empty_app
 ```
 
-You should see a Bevy window with a dark background. There is no gameplay yet, but this example already contains the core application shape.
+You should see a Bevy window with a dark background. This first window already contains the core application shape.
 
 ## Walkthrough: `01_empty_app`
 
@@ -47,13 +47,13 @@ add_systems(Startup, ...)  register one startup system
 run()                      enter the engine loop
 ```
 
-`DefaultPlugins` adds the normal engine pieces: windowing, rendering, input, assets, logging, and related defaults. Without it, many familiar Bevy features are not present.
+`DefaultPlugins` adds the normal engine pieces: windowing, rendering, input, assets, logging, and related defaults. This is the standard starting point for the tutorial examples.
 
 Using the Rust syntax from chapter 1, `App::new()` is an associated function on the `App` type, and `.insert_resource(...)`, `.add_plugins(...)`, `.add_systems(...)`, and `.run()` are method calls on the app builder value.
 
-## `App` Is Configuration, Not Gameplay
+## `App` Registers Gameplay
 
-`App` is where you register the data and behavior Bevy should run. The movement logic, AI, collision, and UI do not live inside `App`; they live in systems that `App` schedules.
+`App` is where you register the data and behavior Bevy should run. Movement logic, AI, collision, and UI live in systems, and `App` schedules those systems.
 
 This is the important split:
 
@@ -78,7 +78,7 @@ Startup = run once when the app starts
 Update  = run every frame
 ```
 
-The function name does not decide timing. A function named `setup` runs every frame if you register it in `Update`.
+Registration decides timing. A function named `setup` runs every frame if you register it in `Update`.
 
 ## Commands And Deferred World Changes
 
@@ -99,7 +99,7 @@ Common `Commands` uses:
 - `commands.entity(entity).insert(...)`: add components.
 - `commands.entity(entity).remove::<T>()`: remove a component type.
 
-Commands are deferred. Inside a system, `commands.spawn(...)` does not immediately make the new entity visible to every query currently running in that same system. Bevy applies queued commands at schedule boundaries and other defined sync points. This keeps system execution safe and parallelizable.
+Commands are deferred. Inside a system, `commands.spawn(...)` queues a structural change. Bevy applies queued commands at schedule boundaries and other defined sync points, so queries see structural changes after those apply points. This keeps system execution safe and parallelizable.
 
 Rule of thumb:
 
@@ -133,7 +133,7 @@ fn setup(mut commands: Commands) {
 
 The camera entity has a `Camera2d` component. The square entity has a `Sprite` and a `Transform`.
 
-This square is not an object instance in a class hierarchy. It is an entity with components:
+This square is an ECS entity made from components:
 
 ```text
 Entity
@@ -157,7 +157,7 @@ impl Plugin for GamePlugin {
 }
 ```
 
-`build` is called when the plugin is added. It is not a per-frame update function.
+`build` is called when the plugin is added. Per-frame behavior stays in systems that the plugin registers.
 
 Later examples use plugins to divide responsibilities:
 

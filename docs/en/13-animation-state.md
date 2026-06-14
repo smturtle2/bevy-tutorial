@@ -64,7 +64,7 @@ Attack has its own timer so the attack frame is visible even if the player relea
 
 - Treating animation state as the same thing as game state.
 - Updating atlas frames in the input system.
-- Letting an attack state last forever because no timer exits it.
+- Use a timer to exit the attack state.
 
 ## Change It
 

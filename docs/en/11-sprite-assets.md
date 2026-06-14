@@ -51,7 +51,7 @@ The returned handle can be stored in a component immediately. Bevy may finish lo
 
 - Writing `assets/player.png` inside `asset_server.load`; Bevy already starts from the asset root.
 - Loading the same image path in every frame.
-- Treating a handle as the image bytes. It is a reference managed by Bevy's asset system.
+- Treat handles as asset-system references, and keep image bytes managed by Bevy.
 
 ## Change It
 

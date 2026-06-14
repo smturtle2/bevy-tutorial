@@ -39,7 +39,7 @@ cargo run --example 11_sprite_assets
 
 `DefaultPlugins.set(ImagePlugin::default_nearest())`는 픽셀 아트가 흐려지지 않게 nearest sampling을 사용합니다. 작은 스프라이트를 확대하는 튜토리얼에서는 이 설정이 중요합니다.
 
-핸들은 복사 가능한 파일 내용이 아니라 에셋 참조입니다. 같은 이미지를 여러 엔티티가 써도 각 엔티티가 이미지 전체를 새로 들고 있는 것이 아닙니다.
+핸들은 에셋 참조입니다. 같은 이미지를 여러 엔티티가 쓰면 각 엔티티는 같은 에셋을 가리키는 핸들을 가집니다.
 
 ## 프레임 흐름
 
@@ -54,7 +54,7 @@ cargo run --example 11_sprite_assets
 - `assets/`를 경로에 포함해 `asset_server.load("assets/player.png")`처럼 쓰지 마세요. Bevy의 기본 에셋 루트가 이미 `assets`입니다.
 - 이미지가 보이지 않을 때는 파일명 대소문자와 실행 위치를 확인하세요.
 - 픽셀 아트가 흐리면 `ImagePlugin::default_nearest()` 설정을 확인하세요.
-- 에셋 핸들을 지역 변수로 만들었다는 이유만으로 로드가 취소되는 것은 아닙니다. 핸들이 `Sprite` 안에 저장되어 있으면 엔티티가 참조를 유지합니다.
+- 핸들이 `Sprite` 안에 저장되어 있으면 엔티티가 에셋 참조를 유지합니다.
 
 ## 작게 바꿔보기
 

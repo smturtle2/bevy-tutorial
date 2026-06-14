@@ -41,7 +41,7 @@ Transform    stores positions for both player and camera
 
 The camera system uses `let Ok(target_transform) = targets.get(follow.target) else { continue; };`.
 
-That is Rust pattern matching for a fallible lookup. The target entity might have been despawned. The system handles that case explicitly instead of assuming the entity still exists.
+That is Rust pattern matching for a fallible lookup. Entity lifetimes can change during gameplay, so the system gives the missing-target case an explicit branch and keeps the frame running.
 
 ## Bevy Point
 
@@ -67,7 +67,7 @@ The systems are chained because the camera should follow the latest player posit
 
 - Copying the player position directly gives a hard camera snap, not follow smoothing.
 - Storing the target as a resource is less flexible than a component when several cameras may exist.
-- Ignoring a missing target can panic later; this example uses `Query::get`.
+- Use `Query::get` for target lookups so the system has a clear path when the target entity is gone.
 
 ## Change It
 

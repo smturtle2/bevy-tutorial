@@ -1,4 +1,4 @@
-# 1. Rust For Bevy
+# 1. Rust for Bevy
 
 
 <div align="center">
@@ -9,72 +9,125 @@
 
 ---
 
-This is not a complete Rust course. It is the Rust you need to read the examples in this repository without treating Bevy code as magic.
+Rust is the language layer of every Bevy system you will write. Bevy uses Rust's model directly: components are Rust types, resources are Rust types, systems are Rust functions, and queries describe Rust borrow permissions.
 
-The key habit is to read types first. In Bevy, a system signature tells you what data the system reads, what it mutates, and whether the data is per-entity component data, global resource data, or local system data.
+This chapter builds the Rust foundation needed to read and change the tutorial examples with confidence.
 
 ## Chapter Contract
 
 After this chapter, you should be able to:
 
-- Read a system signature such as `fn move_bodies(time: Res<Time>, mut bodies: Query<...>)` from left to right.
-- Explain the difference between `struct Player;`, `struct Velocity(Vec2);`, and `struct Body { ... }`.
-- Distinguish binding mutability from data access rights in `mut players: Query<&mut Transform, With<Player>>`.
-- Tell what `::` and `.` mean in `App::new()`, `Transform::from_translation(...)`, and `direction.normalize_or_zero()`.
-- Understand why `Option`, `Result`, `let else`, and `match` appear often in Bevy code.
-- Respond to ownership errors by deciding whether a value should be owned or borrowed instead of reflexively adding `clone()`.
+- Read a Rust function signature and identify parameter types, return types, and mutable bindings.
+- Explain what `let`, `mut`, `const`, `fn`, `struct`, `enum`, `impl`, `use`, and `pub` do.
+- Distinguish owned values, shared references `&T`, and mutable references `&mut T`.
+- Explain the difference between `struct Player;`, `struct Velocity(Vec2);`, and `struct Body { half_size: Vec2 }`.
+- Read `App::new()`, `Transform::from_translation(...)`, `direction.normalize_or_zero()`, and `velocity.0`.
+- Understand why Bevy code contains `derive`, generic types such as `Query<...>`, and wrappers such as `Res<T>`.
+- Handle `Option`, `Result`, `match`, `let else`, and `?` when a value may be absent or an operation may fail.
+- Read a Bevy system signature as a data-access contract.
 
-Out of scope:
+## The Rust Model
 
-- unsafe Rust
-- advanced lifetime design
-- writing macros
-- async Rust
-- crate publishing and workspace design
-
-Those topics are easier to learn after the game structure is larger.
-
-## How To Read Rust Code
-
-When Rust code looks dense, read Bevy examples in this order:
+Rust code is built from a few ideas:
 
 ```text
-1. Read the function name.
-2. Read parameter names and types.
-3. Check for & or &mut.
-4. Check whether it receives Query, Res, ResMut, or Commands.
-5. Read the body for what values it creates and what values it changes.
+values       data at runtime
+types        names for the shape and rules of data
+bindings     local names created with let
+functions    reusable blocks of behavior
+ownership    one clear owner for most values
+borrowing    temporary access through & or &mut
+traits       behavior contracts implemented by types
+modules      file and namespace organization
 ```
 
-For example:
+Bevy maps those ideas directly onto game code:
+
+```text
+component    Rust type attached to an entity
+resource     Rust type stored once in the world
+system       Rust function run by Bevy
+plugin       Rust type that registers systems and resources
+query        typed request for component access
+```
+
+When Bevy code looks dense, start by reading the Rust types. The type signature usually tells you what the code is allowed to touch.
+
+## A Small Bevy File As Rust
+
+`examples/01_empty_app.rs` is already real Rust:
 
 ```rust
-fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
-    for (mut transform, velocity) in &mut bodies {
-        transform.translation += velocity.0.extend(0.0) * time.delta_secs();
-    }
+use bevy::prelude::*;
+
+fn main() {
+    App::new()
+        .insert_resource(ClearColor(Color::srgb(0.08, 0.09, 0.11)))
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, setup_camera)
+        .run();
+}
+
+fn setup_camera(mut commands: Commands) {
+    commands.spawn(Camera2d);
 }
 ```
 
-Read it as:
+Read it as Rust first:
 
 ```text
-move_bodies is a Rust function that may run every frame.
-It reads the Time resource.
-It finds entities with Body.
-For each entity, it mutates Transform and reads Velocity.
-It turns Velocity.0 from Vec2 into Vec3, multiplies by delta time, and adds it to position.
+use bevy::prelude::*;
+    Bring common Bevy names into scope.
+
+fn main() { ... }
+    Program entry point.
+
+App::new()
+    Call an associated function on the App type to create an App value.
+
+.insert_resource(...)
+.add_plugins(...)
+.add_systems(...)
+.run()
+    Call methods on the App value, one after another.
+
+fn setup_camera(mut commands: Commands)
+    Define a function. Bevy can run it as a system.
+
+commands.spawn(Camera2d);
+    Use the Commands value to request a new entity.
 ```
 
-Rust makes "which data is accessed with which permissions" visible in types. Bevy uses that property directly for ECS scheduling.
+The chain in `main` is standard Rust method-call syntax. Each method returns a value that allows the next method to be called.
 
-## Type Annotations And Function Signatures
+## Bindings, Values, And Types
 
-Rust writes variable, parameter, and return types in this form:
+Rust creates local names with `let`:
 
 ```rust
-let speed: f32 = 220.0;
+let score = 0;
+let speed: f32 = 280.0;
+let name = "player";
+```
 
+Rules:
+
+```text
+let name = value;        create a binding
+let name: Type = value;  create a binding with an explicit type
+```
+
+Rust often infers the type from the right side:
+
+```rust
+let mut direction = Vec2::ZERO;
+```
+
+`direction` is a `Vec2` because `Vec2::ZERO` is a `Vec2`.
+
+Function parameters are different. Their types are normally written explicitly:
+
+```rust
 fn add_score(current: u32, amount: u32) -> u32 {
     current + amount
 }
@@ -83,145 +136,36 @@ fn add_score(current: u32, amount: u32) -> u32 {
 Rules:
 
 ```text
-name: Type        variable or parameter type
-fn name(...)      function definition
--> Type           return type
-final expression  return value when there is no semicolon
+current: u32     parameter named current with type u32
+amount: u32      parameter named amount with type u32
+-> u32           function returns a u32
 ```
 
-The last line of that function is `current + amount`, with no semicolon. In Rust, the final expression of a block can be the return value.
-
-If you add a semicolon, that expression becomes a statement and is not returned:
-
-```rust
-fn add_score(current: u32, amount: u32) -> u32 {
-    current + amount;
-    // compile error: expected u32, found ()
-}
-```
-
-`()` is the unit type, meaning "no meaningful return value." Bevy system functions usually return nothing, so `-> ()` is omitted:
-
-```rust
-fn player_input(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut players: Query<&mut Velocity, With<Player>>,
-) {
-    // return type is ()
-}
-```
-
-## Type Inference
-
-Rust infers many types:
-
-```rust
-let mut direction = Vec2::ZERO;
-```
-
-Here `direction` is a `Vec2` because the right side is `Vec2::ZERO`.
-
-Function parameter types are usually written explicitly. Bevy system parameters especially should be explicit because the type itself is the system contract:
+Bevy system parameters should be explicit because the type is the system's contract:
 
 ```rust
 fn player_input(keyboard: Res<ButtonInput<KeyCode>>) {}
 ```
 
-That line says: "this system reads the keyboard input resource."
+That signature says: "this system reads the keyboard input resource."
 
-## `const` And Number Types
+## Mutability
 
-Use `const` for repeated fixed values:
-
-```rust
-const PLAYER_SPEED: f32 = 260.0;
-const PLAYER_SIZE: Vec2 = Vec2::splat(42.0);
-```
-
-Rule:
-
-```text
-const NAME: Type = value;
-```
-
-A `const` is not a runtime setting. It is a compile-time fixed value. The examples use it for numbers that should be obvious while reading the tutorial, such as player size, enemy size, and attack range.
-
-Bevy 2D examples use `f32` heavily because screen coordinates, speed, delta time, and color values are usually floating-point values:
-
-```rust
-let seconds: f32 = time.delta_secs();
-let x = 120.0;
-```
-
-`120.0` is a floating-point literal. `120` is an integer literal. Bevy math types such as `Vec2`, `Vec3`, and `Transform` mostly operate on `f32`.
-
-## `::`, `.`, Associated Functions, And Methods
-
-Rust uses `::` and `.` for different things:
-
-```rust
-App::new()
-Transform::from_translation(Vec3::ZERO)
-Vec2::new(1.0, 0.0)
-direction.normalize_or_zero()
-```
-
-Read them as:
-
-```text
-Type::name(...)   associated function or constant on a type
-value.name(...)   method call on a value
-Type::CONSTANT    constant on a type
-```
-
-`App::new()` creates a value from the type because there is no `App` value yet.
-
-`Transform::from_translation(...)` creates a new `Transform`.
-
-`direction.normalize_or_zero()` calls a method on the existing `direction` value.
-
-This is clearer inside an `impl` block:
-
-```rust
-struct Score(u32);
-
-impl Score {
-    fn new() -> Self {
-        Self(0)
-    }
-
-    fn add(&mut self, amount: u32) {
-        self.0 += amount;
-    }
-}
-```
-
-Calls:
-
-```rust
-let mut score = Score::new();
-score.add(10);
-```
-
-`new` has no `self` parameter, so it is called as `Score::new()`. `add` takes `&mut self`, so it is called as `score.add(...)`.
-
-## Variables And Mutability
-
-Rust variables are immutable by default:
+Rust bindings are immutable by default:
 
 ```rust
 let direction = Vec2::ZERO;
 direction.x += 1.0; // compile error
 ```
 
-Use `mut` when the binding itself must change:
+Use `mut` when the binding must change:
 
 ```rust
 let mut direction = Vec2::ZERO;
 direction.x += 1.0;
 ```
 
-You see this in `examples/03_player_input.rs`:
+The input example uses this because it builds a direction from key presses:
 
 ```rust
 let mut direction = Vec2::ZERO;
@@ -231,35 +175,29 @@ if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
 }
 ```
 
-`mut` belongs to the binding. It is not part of the `Vec2` type. The same rule appears in system parameters:
+`mut` is attached to a binding. The type stays `Vec2`.
 
-```rust
-mut players: Query<&mut Transform, With<Player>>
-```
-
-This means the local variable `players` can be iterated mutably, and the query gives mutable access to each matched `Transform`.
-
-These look similar, but they are different:
+These two lines mean different things:
 
 ```rust
 let mut value = 10;
 let reference = &mut value;
 ```
 
-The first `mut` means the `value` binding can change. The second `&mut value` means `value` is borrowed exclusively.
+The first line says the local binding `value` can change. The second line creates an exclusive mutable borrow of `value`.
 
-Another example:
+You can also make a reference binding itself mutable:
 
 ```rust
 let a = 10;
-let mut r = &a;
 let b = 20;
+let mut r = &a;
 r = &b;
 ```
 
-This compiles. The binding `r` is mutable, so it can point to `a` and later to `b`. But `r` is still an `&i32`; it does not allow you to modify `a` or `b`.
+`r` can be reassigned to point at `b`, but its type is still `&i32`, which is read-only access to an `i32`.
 
-If you want a mutable `i32` copied from a read-only reference, write:
+If you want a mutable integer copied from a read-only reference:
 
 ```rust
 let a = 10;
@@ -268,24 +206,130 @@ let mut copied: i32 = *r;
 copied += 1;
 ```
 
-`i32` is `Copy`, so `*r` copies the value. Changing `copied` does not change `a`.
+`i32` is `Copy`, so `*r` copies the value. `copied` then changes independently from `a`.
 
-## Shadowing
+## Numbers And Constants
 
-Rust lets you declare the same name again with `let`. This is called shadowing:
+The tutorial examples use these numeric types often:
 
-```rust
-let speed = "220";
-let speed: f32 = speed.parse().unwrap_or(220.0);
+```text
+i32, u32    integers
+f32         32-bit floating-point number
+usize       size or index type
 ```
 
-The first `speed` is a string. The second `speed` is an `f32`. This is not mutating the same variable; it creates a new binding that hides the previous one.
+Bevy 2D math uses `f32` heavily because positions, speeds, time deltas, and sizes are usually floating-point values:
 
-The examples do not overuse shadowing, but patterns such as `let Ok(player) = ... else { ... };` also create new bindings.
+```rust
+let seconds: f32 = time.delta_secs();
+let x = 120.0;
+let lives: u32 = 3;
+```
 
-## Struct Shapes
+`120.0` is a floating-point literal. `120` is an integer literal.
 
-Rust `struct` creates a type. The examples use three common shapes.
+Use `const` for fixed values that should be visible while reading the code:
+
+```rust
+const PLAYER_SPEED: f32 = 280.0;
+const PLAYER_SIZE: Vec2 = Vec2::splat(80.0);
+```
+
+Rule:
+
+```text
+const NAME: Type = value;
+```
+
+A `const` is a compile-time fixed value. Runtime settings belong in resources.
+
+## Expressions, Statements, And Semicolons
+
+Rust has expressions that produce values and statements that perform actions.
+
+The final expression in a block can be the return value:
+
+```rust
+fn add_score(current: u32, amount: u32) -> u32 {
+    current + amount
+}
+```
+
+There is no semicolon after `current + amount`, so it is returned.
+
+With a semicolon, the expression becomes a statement:
+
+```rust
+fn add_score(current: u32, amount: u32) -> u32 {
+    current + amount;
+    // compile error: expected u32, found ()
+}
+```
+
+`()` is Rust's unit type. It means "no meaningful value."
+
+Most Bevy systems return unit:
+
+```rust
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+```
+
+The return type is omitted because it is `()`.
+
+`if` can also produce a value:
+
+```rust
+let animation = if direction.length_squared() > 0.0 {
+    PlayerAnimState::Run
+} else {
+    PlayerAnimState::Idle
+};
+```
+
+Both branches must produce compatible types.
+
+## `::`, `.`, Associated Functions, And Methods
+
+Rust uses `::` for names that live under a type or module:
+
+```rust
+App::new()
+Transform::from_translation(Vec3::ZERO)
+Vec2::new(1.0, 0.0)
+Vec2::ZERO
+```
+
+Rules:
+
+```text
+Type::function(...)  associated function on a type
+Type::CONSTANT       associated constant on a type
+module::name         name inside a module
+```
+
+Rust uses `.` for methods or fields on an existing value:
+
+```rust
+direction.normalize_or_zero()
+transform.translation
+velocity.0
+```
+
+Rules:
+
+```text
+value.method(...)    call a method on a value
+value.field          access a named field
+value.0              access tuple field number 0
+```
+
+`App::new()` creates an `App` because there is no `App` value yet. `.add_plugins(...)` is called after an `App` value exists.
+
+## Structs
+
+`struct` creates a new type. Bevy code uses structs constantly because components and resources are Rust types.
 
 ### Unit Structs
 
@@ -294,13 +338,24 @@ Rust `struct` creates a type. The examples use three common shapes.
 struct Player;
 ```
 
-This type stores no fields. In Bevy it is useful as a marker component: the entity either has `Player` or it does not.
+This struct has no fields. It is useful as a marker component: the presence of `Player` marks the entity as the player.
 
-`Player`, `Enemy`, `Collectible`, and `HealthBarFill` in `examples/07_rpg_slice.rs` are all marker components.
+Typical markers:
+
+```rust
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Enemy;
+```
 
 ### Tuple Structs
 
 ```rust
+#[derive(Resource)]
+struct PlayerSpeed(f32);
+
 #[derive(Component)]
 struct Velocity(Vec2);
 ```
@@ -308,39 +363,11 @@ struct Velocity(Vec2);
 A tuple struct has unnamed fields. Access uses numeric field syntax:
 
 ```rust
-velocity.0 = direction.normalize_or_zero() * PLAYER_SPEED;
+let speed = player_speed.0;
+velocity.0 = direction.normalize_or_zero() * speed;
 ```
 
-Tuple structs are useful when a primitive or engine type needs domain meaning. `Vec2` is just a vector; `Velocity(Vec2)` means "this entity's movement velocity."
-
-## Reading Tuples And Parentheses
-
-Rust uses parentheses for several things. Bevy `spawn` calls are a common place to get confused:
-
-```rust
-commands.spawn((
-    Player,
-    Velocity(Vec2::ZERO),
-    Transform::from_translation(Vec3::ZERO),
-));
-```
-
-That code has two layers of parentheses:
-
-```text
-spawn(...)    function-call parentheses
-(A, B, C)     tuple containing several components
-```
-
-You can spawn a single component with `commands.spawn(Player)`, but entities usually have several components, so the components are grouped into a tuple.
-
-Queries use tuples too:
-
-```rust
-Query<(&mut Transform, &Velocity), With<Body>>
-```
-
-Here `(&mut Transform, &Velocity)` is a tuple type meaning "fetch these two components from the same entity."
+Tuple structs are useful when one value needs domain meaning. `Vec2` is a vector. `Velocity(Vec2)` means "this entity's movement velocity."
 
 ### Named-Field Structs
 
@@ -351,113 +378,62 @@ struct Body {
 }
 ```
 
-Named fields are best when the data has more than one meaning or when the field name improves the code. In the final example, `Body` stores `half_size` so collision code can compare rectangle extents:
-
-```rust
-let allowed = a_body.half_size + b_body.half_size;
-```
-
-Construct a named-field struct by naming each field:
+Named fields are better when field names make the code clearer:
 
 ```rust
 let body = Body {
     half_size: Vec2::splat(16.0),
 };
+
+let allowed = player_body.half_size + enemy_body.half_size;
 ```
 
-When a struct has several fields, this is easier to audit than a tuple struct. When there is one field and the type name carries the meaning, `Velocity(Vec2)` is simpler.
-
-Struct choice:
+Choice rule:
 
 ```text
-marker only                  -> unit struct
+marker only                   -> unit struct
 one value with domain meaning -> tuple struct
-several fields               -> named-field struct
+several named facts           -> named-field struct
 ```
 
-## `Default` And `..default()`
+## Tuples And Spawn Calls
 
-A Rust type can create a default value if it implements the `Default` trait:
+Rust tuples group several values:
 
 ```rust
-let transform = Transform::default();
+let pair = (10, 20);
+let x = pair.0;
+let y = pair.1;
 ```
 
-Many Bevy types implement `Default`. That lets you specify only the fields you care about and fill the rest with defaults:
+Bevy uses tuples when spawning several components at once:
 
 ```rust
-Sprite {
-    image: asset_server.load("player.png"),
-    custom_size: Some(Vec2::splat(48.0)),
-    ..default()
-}
+commands.spawn((
+    Player,
+    Sprite::from_color(Color::srgb(0.25, 0.70, 1.0), Vec2::splat(80.0)),
+    Transform::from_translation(Vec3::ZERO),
+));
 ```
 
-`..default()` means "use default values for the fields not listed above." This is very common in Bevy examples.
-
-Rules:
+There are two layers of parentheses:
 
 ```text
-Type::default()  create a default value from the type name
-default()        create a default value when the type can be inferred
-..default()      fill missing fields in a struct literal
+spawn(...)    function-call parentheses
+(A, B, C)     tuple containing several components
 ```
 
-`..default()` must come last in the struct literal.
-
-## Enums
-
-An `enum` is a type whose value is one of several variants. `examples/05_plugins_sets.rs` uses one for system ordering:
+Queries use tuples too:
 
 ```rust
-#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-enum GameSet {
-    Input,
-    Movement,
-}
+Query<(&mut Transform, &Velocity), With<Body>>
 ```
 
-`GameSet::Input` and `GameSet::Movement` are not strings. They are typed labels Bevy can use when scheduling systems.
+`(&mut Transform, &Velocity)` means "fetch both components from the same entity."
 
-The final example expands that enum:
+## Derive And Traits
 
-```rust
-enum GameSet {
-    Input,
-    Ai,
-    Movement,
-    Collision,
-    Display,
-}
-```
-
-Enums are also a good fit for game states:
-
-```rust
-enum GameState {
-    Menu,
-    Playing,
-    Paused,
-    GameOver,
-}
-```
-
-Use `match` to run different code for each state:
-
-```rust
-match state {
-    GameState::Menu => show_menu(),
-    GameState::Playing => update_game(),
-    GameState::Paused => show_pause(),
-    GameState::GameOver => show_game_over(),
-}
-```
-
-The useful part is that the compiler catches missing variants. If you later add `Loading` to `GameState`, a `match` that does not handle `Loading` becomes a compile error.
-
-## Derive
-
-`derive` asks Rust to generate an implementation of a trait.
+A trait is a behavior contract. `derive` asks Rust to generate a trait implementation:
 
 ```rust
 #[derive(Component)]
@@ -474,74 +450,31 @@ struct BodyBundle {
 }
 ```
 
-The type is still your type. The derive makes it usable in a specific Bevy role:
-
-- `Component`: can be attached to an entity.
-- `Resource`: can be stored once in the world.
-- `Bundle`: can be expanded into several components when spawning.
-- `SystemSet`: can label systems for ordering.
-
-Some derives come from Rust's standard traits or common scheduling requirements. `Debug`, `Clone`, `PartialEq`, `Eq`, and `Hash` on `GameSet` allow Bevy to compare and store set labels.
-
-## Impl Blocks
-
-`impl` attaches functions to a type:
-
-```rust
-impl BodyBundle {
-    fn new(position: Vec3) -> Self {
-        Self {
-            body: Body,
-            velocity: Velocity(Vec2::ZERO),
-            transform: Transform::from_translation(position),
-        }
-    }
-}
-```
-
-`Self` means the type being implemented. Here it means `BodyBundle`.
-
-The examples use `new` constructors to keep spawn rules in one place:
-
-```rust
-commands.spawn(PlayerBundle::new());
-```
-
-That line is easier to audit than repeating every component at every spawn site.
-
-Functions inside an `impl` commonly fall into three forms:
-
-```rust
-impl WaveSpawner {
-    fn new() -> Self {
-        Self { wave: 1 }
-    }
-
-    fn wave(&self) -> u32 {
-        self.wave
-    }
-
-    fn reset(&mut self) {
-        self.wave = 1;
-    }
-}
-```
-
-Read them as:
+Read those derives as role declarations:
 
 ```text
-fn new() -> Self    creates a value. Call as WaveSpawner::new()
-fn wave(&self)      reads the value. Call as spawner.wave()
-fn reset(&mut self) mutates the value. Call as spawner.reset()
+Component  this type can be attached to an entity
+Resource   this type can be stored once in the world
+Bundle     this type can expand into several components during spawn
 ```
 
-`self` is the value the method was called on. `&self` borrows it read-only, and `&mut self` borrows it mutably.
-
-## Traits And Trait Bounds
-
-A trait is a behavior contract. Bevy's `Plugin` trait says a plugin must provide `build`:
+Some derives are ordinary Rust traits:
 
 ```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum GameSet {
+    Input,
+    Movement,
+}
+```
+
+Bevy needs those traits to store, compare, and debug system-set labels.
+
+You can also implement a trait manually. A Bevy plugin implements `Plugin`:
+
+```rust
+struct GamePlugin;
+
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup);
@@ -552,10 +485,152 @@ impl Plugin for GamePlugin {
 Read it as:
 
 ```text
-GamePlugin satisfies Bevy's Plugin contract.
+GamePlugin satisfies Bevy's Plugin contract by providing build.
 ```
 
-You will often see generics with trait bounds in Bevy code. A helper function can accept any component type by writing a bound:
+## Impl Blocks And `Self`
+
+`impl` attaches functions to a type:
+
+```rust
+struct Score(u32);
+
+impl Score {
+    fn new() -> Self {
+        Self(0)
+    }
+
+    fn add(&mut self, amount: u32) {
+        self.0 += amount;
+    }
+}
+```
+
+`Self` means the type currently being implemented. Here it means `Score`.
+
+Calls:
+
+```rust
+let mut score = Score::new();
+score.add(10);
+```
+
+Rules:
+
+```text
+fn new() -> Self       no self parameter, call with Score::new()
+fn value(&self)        reads an existing value, call with score.value()
+fn add(&mut self, ...) mutates an existing value, call with score.add(...)
+```
+
+Bevy examples use constructors to keep spawn rules in one place:
+
+```rust
+impl PlayerBundle {
+    fn new(position: Vec3) -> Self {
+        Self {
+            player: Player,
+            velocity: Velocity(Vec2::ZERO),
+            transform: Transform::from_translation(position),
+        }
+    }
+}
+```
+
+Then spawning reads as a single intent:
+
+```rust
+commands.spawn(PlayerBundle::new(Vec3::ZERO));
+```
+
+## Enums And Match
+
+An `enum` is a type whose value is one of several variants:
+
+```rust
+enum GameState {
+    Menu,
+    Playing,
+    Paused,
+    GameOver,
+}
+```
+
+Variants are namespaced under the enum:
+
+```rust
+GameState::Menu
+GameState::Playing
+```
+
+Use `match` to handle variants:
+
+```rust
+match state {
+    GameState::Menu => show_menu(),
+    GameState::Playing => update_game(),
+    GameState::Paused => show_pause(),
+    GameState::GameOver => show_game_over(),
+}
+```
+
+The compiler checks that every variant is handled. If you add `Loading` later, Rust points at the `match` expressions that need an update.
+
+Bevy also uses enums for typed system labels:
+
+```rust
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum GameSet {
+    Input,
+    Movement,
+}
+```
+
+`GameSet::Input` is a typed label.
+
+## Generics
+
+Generics let a type or function mention another type as a parameter:
+
+```rust
+Vec<T>
+Option<T>
+Result<T, E>
+Handle<Image>
+Res<ButtonInput<KeyCode>>
+Query<&mut Transform, With<Player>>
+```
+
+Read from the outside in:
+
+```text
+Handle<Image>
+    a handle to an Image asset
+
+Res<ButtonInput<KeyCode>>
+    read access to the ButtonInput resource that tracks KeyCode input
+
+Query<&mut Transform, With<Player>>
+    for entities with Player, fetch mutable Transform access
+```
+
+`Query` has this shape:
+
+```rust
+Query<Data, Filter>
+```
+
+Examples:
+
+```rust
+Query<&Transform>
+Query<&mut Transform, With<Player>>
+Query<(&mut Transform, &Velocity), With<Body>>
+```
+
+The first type parameter says what component data to fetch. The second type parameter, when present, filters which entities match.
+
+Functions can be generic too:
 
 ```rust
 fn spawn_marker<T: Component>(commands: &mut Commands, marker: T) {
@@ -563,58 +638,13 @@ fn spawn_marker<T: Component>(commands: &mut Commands, marker: T) {
 }
 ```
 
-`T: Component` means "`T` can be any type, as long as it is a Bevy component." That lets the function accept different marker components:
-
-```rust
-spawn_marker(&mut commands, Player);
-spawn_marker(&mut commands, Enemy);
-```
-
-Without the bound, Bevy could not know that `marker: T` is valid component data.
-
-The final example uses explicit `PlayerBundle`, `EnemyBundle`, and `CollectibleBundle` types. That is more repetitive, but it is easier to read while learning because each spawn shape has a concrete name.
-
-## Reading Generic Types
-
-Bevy types often contain `<...>`:
-
-```rust
-Res<ButtonInput<KeyCode>>
-Query<(&mut Transform, &Velocity), With<Player>>
-Handle<Image>
-Assets<TextureAtlasLayout>
-```
-
-`<...>` contains type parameters. Read from the outside in:
-
-```text
-Res<ButtonInput<KeyCode>>
-= read the ButtonInput resource that stores KeyCode input state
-
-Query<(&mut Transform, &Velocity), With<Player>>
-= for entities with Player, mutate Transform and read Velocity
-
-Handle<Image>
-= a handle that refers to an Image asset
-```
-
-For `Query`, the first type parameter is the data to fetch and the second is the filter:
-
-```rust
-Query<Data, Filter>
-```
-
-If there is no filter, it can be omitted:
-
-```rust
-Query<&Transform>
-```
-
-Generic syntax can look heavy, but in Bevy it usually says which typed data a system reads or writes.
+`T: Component` means "`T` can be any type that implements Bevy's `Component` trait."
 
 ## Ownership, Move, Copy, And Clone
 
-Rust has one owner for most values. Assigning a non-`Copy` value moves it:
+Rust gives most values one owner.
+
+Assigning a non-`Copy` value moves ownership:
 
 ```rust
 let a = String::from("player");
@@ -622,7 +652,7 @@ let b = a;
 // a is no longer usable
 ```
 
-Small simple values often implement `Copy`, so assignment copies the bits:
+Small simple values often implement `Copy`, so assignment copies them:
 
 ```rust
 let a = 10;
@@ -630,15 +660,13 @@ let b = a;
 println!("{a} {b}");
 ```
 
-Many Bevy math types are cheap value types. You will often see code that copies positions or vectors:
+Many Bevy math types are cheap value types. You will often see code copy vectors:
 
 ```rust
-let player_position = player.translation.truncate();
+let player_position = player_transform.translation.truncate();
 ```
 
-When a type is not `Copy` and you need a duplicate, use `clone()` only when the type supports `Clone` and a real copy is intended. Do not use `clone()` as a reflex to silence ownership errors; first ask who should own the value.
-
-In Bevy, ownership most often appears around asset handles and component values:
+Use `clone()` when a real duplicate is intended:
 
 ```rust
 let image: Handle<Image> = asset_server.load("player.png");
@@ -646,41 +674,66 @@ commands.spawn(Sprite::from_image(image.clone()));
 commands.spawn(Sprite::from_image(image));
 ```
 
-Here `clone()` does not copy the whole image file. It creates another `Handle<Image>` reference. Several entities should be able to refer to the same asset, so this clone is intentional.
+This clone creates another `Handle<Image>` that points to the same asset. The image data stays shared through the asset system.
 
-By contrast, repeatedly cloning large game state only to satisfy the compiler is usually a design smell. Ask who should own that value.
+Weak clone habit:
 
-## References: `&` And `&mut`
-
-Rust distinguishes owning a value from borrowing it:
-
-```rust
-T       // owned value
-&T      // shared read-only reference
-&mut T  // exclusive mutable reference
+```text
+The compiler says "moved", so add clone everywhere.
 ```
 
-Bevy system parameters make this explicit:
+Better ownership question:
+
+```text
+Who should own this value?
+Should this function borrow it instead?
+Is this type cheap and intended to be copied?
+```
+
+## References And Borrowing
+
+References borrow a value without taking ownership:
+
+```rust
+T       owned value
+&T      shared read-only reference
+&mut T  exclusive mutable reference
+```
+
+Examples:
+
+```rust
+fn print_score(score: &Score) {
+    println!("{}", score.0);
+}
+
+fn add_score(score: &mut Score, amount: u32) {
+    score.0 += amount;
+}
+```
+
+Rules:
+
+```text
+Many &T references can exist at the same time.
+Only one &mut T reference to the same value can exist at a time.
+&mut T excludes all other references to that same value while it is active.
+```
+
+Bevy system parameters use the same idea:
 
 ```rust
 Query<&Transform>      // read Transform
 Query<&mut Transform>  // mutate Transform
-Res<Score>             // read a resource
-ResMut<Score>          // mutate a resource
+Res<Score>             // read Score resource
+ResMut<Score>          // mutate Score resource
 ```
 
-Only one mutable borrow of the same data may exist at a time. That Rust rule is why Bevy cares about query conflicts:
+This is why Bevy can schedule many systems in parallel when their data access is compatible.
 
-```rust
-Query<&Transform, With<Player>>
-Query<&mut Transform, With<Camera2d>>
-```
+## Dereference And Lifetime Intuition
 
-Both queries touch `Transform`, and one is mutable. If Bevy cannot prove the matched entities are different, you must add filters such as `Without<Camera2d>` or split the work into separate systems.
-
-## Dereference: `*`
-
-`*` appears when you need to access the value inside a reference or wrapper:
+`*` accesses the value behind a reference or wrapper:
 
 ```rust
 let mut cooldown = 1.0;
@@ -688,9 +741,7 @@ let cooldown_ref = &mut cooldown;
 *cooldown_ref -= 0.1;
 ```
 
-`cooldown_ref` is the reference. `*cooldown_ref` is the `f32` it points to.
-
-The same idea appears with Bevy's `Local<T>` and `ResMut<T>`:
+The same idea appears with `Local<T>`:
 
 ```rust
 fn tick(time: Res<Time>, mut hit_cooldown: Local<f32>) {
@@ -698,22 +749,10 @@ fn tick(time: Res<Time>, mut hit_cooldown: Local<f32>) {
 }
 ```
 
-`hit_cooldown` is a `Local<f32>` wrapper. Dereferencing lets you mutate the inner `f32`.
-
-Many field accesses are handled automatically by Rust's deref coercion:
-
-```rust
-score.0 += 1;
-```
-
-Even if `score` is `ResMut<Score>`, Rust can often insert the needed dereference. When you assign to or do arithmetic on the inner value itself, you may see `*` explicitly.
-
-## Lifetime Intuition
-
-The early Bevy examples rarely require writing lifetime annotations. The rule is still important:
+The early examples rarely require writing lifetime annotations. The rule still matters:
 
 ```text
-A reference cannot outlive the original value.
+A reference must live no longer than the value it points to.
 ```
 
 Invalid code:
@@ -727,31 +766,37 @@ let r;
 println!("{r}");
 ```
 
-`value` disappears when the inner block ends. If `r` could still point to it, it would be a dangling reference, so Rust rejects the code.
+`value` disappears when the inner block ends. Rust rejects `r` because it would point to gone data.
 
-In Bevy systems, the world owns components and resources, and system parameters borrow them only for one system run. Do not try to store `&Transform` outside the system. If you need to remember something longer, store an `Entity` ID, a copied value, a resource, or a component.
+In Bevy systems, the world owns components and resources. A system borrows them only for one run. If you need to remember something after the system finishes, store an `Entity`, a copied value, a component, or a resource.
 
-## Control Flow: `if`, `for`, `return`
+## Lists, Arrays, And Iteration
 
-Rust `if` conditions do not need parentheses:
+Rust arrays have fixed length:
 
 ```rust
-if direction.length_squared() > 0.0 {
-    velocity.0 = direction.normalize() * speed.0;
+let spawn_points = [
+    Vec3::new(-100.0, 0.0, 0.0),
+    Vec3::new(100.0, 0.0, 0.0),
+];
+```
+
+`Vec<T>` is a growable list:
+
+```rust
+let mut enemies: Vec<Entity> = Vec::new();
+enemies.push(enemy_entity);
+```
+
+`for` loops over an iterator:
+
+```rust
+for point in spawn_points {
+    commands.spawn(Transform::from_translation(point));
 }
 ```
 
-`if` is also an expression:
-
-```rust
-let animation = if velocity.0.length_squared() > 0.0 {
-    PlayerAnimState::Run
-} else {
-    PlayerAnimState::Idle
-};
-```
-
-`for` loops over an iterator. Bevy queries can be iterated too:
+Bevy queries also behave like iterators:
 
 ```rust
 for mut transform in &mut players {
@@ -759,27 +804,15 @@ for mut transform in &mut players {
 }
 ```
 
-Read that line as:
+Read it as:
 
 ```text
 Iterate the players query mutably.
-Borrow each matched Transform mutably.
-Use transform as the loop variable for that borrowed value.
+For each matched entity, borrow its Transform mutably.
+Call that borrowed value transform inside the loop.
 ```
 
-Use `return` to leave a function early:
-
-```rust
-let Ok(player) = players.single() else {
-    return;
-};
-```
-
-Game loops often need to skip a frame when there is no valid target, so early returns are common.
-
-## Patterns And Destructuring
-
-Rust can break a value apart by matching its shape:
+When a query fetches several components, destructure the tuple:
 
 ```rust
 for (mut transform, velocity) in &mut bodies {
@@ -787,15 +820,44 @@ for (mut transform, velocity) in &mut bodies {
 }
 ```
 
-The query item type is `(&mut Transform, &Velocity)`, so the loop variable uses the same shape.
+The loop variable shape matches the query data shape:
 
 ```text
-(mut transform, velocity)
-= first value is a mutable Transform reference
-= second value is a Velocity reference
+Query<(&mut Transform, &Velocity), ...>
+for   (mut transform, velocity) in ...
 ```
 
-`let else` is also pattern matching:
+## Option, Result, `match`, And `let else`
+
+Rust uses explicit types for absence and failure:
+
+```text
+Option<T>     Some(T) or None
+Result<T, E>  Ok(T) or Err(E)
+```
+
+Use `Option` when a value may be missing:
+
+```rust
+let target: Option<Entity> = None;
+```
+
+Use `Result` when an operation may fail:
+
+```rust
+let parsed: Result<f32, _> = "280.0".parse();
+```
+
+Handle the cases with `match`:
+
+```rust
+match parsed {
+    Ok(speed) => println!("speed: {speed}"),
+    Err(error) => println!("invalid speed: {error}"),
+}
+```
+
+Bevy query helpers often return `Result`:
 
 ```rust
 let Ok(player) = players.single() else {
@@ -803,47 +865,16 @@ let Ok(player) = players.single() else {
 };
 ```
 
-If `players.single()` returns `Ok(...)`, the inner value is bound to `player`. If it returns `Err(...)`, the `else` block runs.
-
-## Option, Result, And `let else`
-
-Rust uses `Option<T>` when a value may be absent and `Result<T, E>` when an operation may fail.
-
-Bevy's single-entity query helpers commonly return `Result`:
-
-```rust
-let Ok(player) = player.single() else {
-    return;
-};
-```
-
-This is `let else`. It means:
+This is `let else`:
 
 ```text
-If player.single() returns Ok(value), bind value to player.
-Otherwise, leave the function early.
+If players.single() returns Ok(value), bind value to player.
+Otherwise, run the else block and return from the system.
 ```
 
-Use this when zero or multiple matching entities should make the system skip the frame. The final example uses `Single<...>` instead, which is stricter: it expects exactly one matching entity as part of the system contract.
+It is common in games because a system can safely skip a frame when the expected entity is unavailable.
 
-`Option` appears in Bevy component fields too:
-
-```rust
-sprite.custom_size = Some(Vec2::new(160.0 * health_fraction, 14.0));
-```
-
-`Some(value)` means the size is explicitly set. `None` would mean no custom size.
-
-You can also unpack it with `match`:
-
-```rust
-match sprite.custom_size {
-    Some(size) => println!("custom size: {size:?}"),
-    None => println!("default size"),
-}
-```
-
-`Result` matters more in the save/load example:
+The `?` operator forwards errors:
 
 ```rust
 fn save_progress(progress: &Progress) -> Result<(), String> {
@@ -852,113 +883,172 @@ fn save_progress(progress: &Progress) -> Result<(), String> {
 }
 ```
 
-Read it as:
+Read `?` as:
 
 ```text
-Result<(), String>
-= success returns no meaningful value, failure returns a String error
-
-?
-= if the value is Ok, unwrap it and continue;
-  if it is Err, return that Err from the current function
+If Ok(value), unwrap value and continue.
+If Err(error), return that error from the current function.
 ```
 
-You can use `?` only when the current function also returns a failure-capable type such as `Result` or `Option`.
+You can use `?` only inside a function that returns a compatible failure type such as `Result` or `Option`.
 
-## Modules, `pub`, And `use`
+## `Default` And `..default()`
 
-Rust does not compile every file automatically. A module must be declared from its parent:
+Many Rust and Bevy types can create a default value:
+
+```rust
+let transform = Transform::default();
+```
+
+Bevy examples often specify the important fields and fill the rest with defaults:
+
+```rust
+Sprite {
+    image: asset_server.load("player.png"),
+    custom_size: Some(Vec2::splat(48.0)),
+    ..default()
+}
+```
+
+Rules:
+
+```text
+Type::default()  create a default value from the type name
+default()        create a default value when the type can be inferred
+..default()      fill missing fields in a struct literal
+```
+
+`..default()` must come last in the struct literal.
+
+## Modules, `use`, And `pub`
+
+Rust organizes code with modules. A module declaration brings a file into the program.
+
+Declare a module from its parent:
 
 ```rust
 mod player;
 ```
 
-That loads `src/player.rs`.
+That usually loads `src/player.rs`.
 
-Use `pub` for names another module needs:
+Use `pub` only for names other modules need:
 
 ```rust
 pub struct PlayerPlugin;
 ```
 
-Keep implementation details private by default. If only the plugin needs `spawn_player`, it does not need to be public.
+Keep internal systems and components private until another module needs them.
 
-`use` brings names into scope:
+`use` brings names into the current scope:
 
 ```rust
 use bevy::prelude::*;
 ```
 
-The Bevy prelude exports the common types used throughout this tutorial: `App`, `Plugin`, `Commands`, `Component`, `Resource`, `Query`, `Res`, `Transform`, `Vec2`, `Vec3`, `Color`, `Sprite`, and more.
+The Bevy prelude exports common names used throughout the tutorial: `App`, `Plugin`, `Commands`, `Component`, `Resource`, `Query`, `Res`, `Transform`, `Vec2`, `Vec3`, `Color`, `Sprite`, and more.
 
-Think of file splitting like this:
+File-splitting rule:
 
 ```text
 src/main.rs declares mod player;
 -> src/player.rs becomes the player module
 
-pub struct PlayerPlugin; inside player.rs
--> main.rs or another module can access player::PlayerPlugin
+player.rs contains pub struct PlayerPlugin;
+-> main.rs can access player::PlayerPlugin
 
-struct Player; inside player.rs
--> only the player module can access it
+player.rs contains struct Player;
+-> Player stays private to the player module
 ```
 
-In Bevy projects, it is common to make plugin types public and keep internal components and systems private unless another module really needs them. A smaller public API makes later file restructuring easier.
+In Bevy projects, plugin types are often public, while internal components and systems stay private.
 
-## What Rust And Bevy Do Not Do For You
+## Reading A System Signature
 
-Bevy checks many ECS borrow conflicts, but Rust rules do not disappear:
+Now combine the Rust pieces:
+
+```rust
+fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
+    for (mut transform, velocity) in &mut bodies {
+        transform.translation += velocity.0.extend(0.0) * time.delta_secs();
+    }
+}
+```
+
+Read it left to right:
 
 ```text
-Rust guarantees:
-- no dangling references
-- no several mutable references to the same value at the same time
-- no using a value as the wrong type
+fn move_bodies(...)
+    Define a Rust function named move_bodies.
 
-Bevy adds:
-- world data access based on system parameter types
-- entity set selection through Query filters
-- deferred structural changes through Commands
+time: Res<Time>
+    Read the Time resource.
+
+mut bodies: Query<...>
+    The local query binding is mutable because iteration needs mutable access.
+
+(&mut Transform, &Velocity)
+    For each matched entity, mutate Transform and read Velocity.
+
+With<Body>
+    Only match entities that have Body.
+
+for (mut transform, velocity) in &mut bodies
+    Iterate the query and destructure each item.
+
+velocity.0
+    Read the Vec2 inside the Velocity tuple struct.
+
+time.delta_secs()
+    Call a method on the Time resource.
 ```
 
-So the right model is not "Bevy handles ownership so I can ignore Rust." The better model is: "Bevy provides an ECS API on top of Rust ownership, so writing the correct system signature is part of the ownership design."
+That is the core Rust-Bevy bridge: the system signature is both Rust code and Bevy's data-access contract.
 
 ## Reading Compiler Errors
 
-Rust errors are usually precise, but they are dense. Read them in this order:
+Rust compiler errors are dense, but they usually point at the real contract violation. Use this order:
 
-1. Start at the first error, not the last.
-2. Find the file and line number in your code.
-3. Read the expected type and the found type.
-4. Look for borrow words: "mutable", "immutable", "moved", "borrowed".
-5. Fix one error, then run `cargo check` again.
+1. Start with the first error.
+2. Find the file and line in your code.
+3. Read "expected" and "found" types.
+4. Look for ownership words: `moved`, `borrowed`, `mutable`, `immutable`, `does not live long enough`.
+5. Fix one error and run `cargo check` again.
 
-Common beginner errors in these examples:
+Common errors in this tutorial:
 
-- Missing `mut` on a binding you modify: `let direction` should be `let mut direction`.
-- Query asks for `&mut Transform`, but the loop variable is not mutable: use `for mut transform in &mut players`.
-- A component type is used in a query but does not derive `Component`.
-- A resource is inserted without deriving `Resource`.
-- A system function is written correctly but never registered with `add_systems`.
-- Two `Query<&mut T>` parameters can match the same entity and Bevy reports a conflict.
-- Trying to mutate through a read-only `&T`.
-- Trying to use `Option<T>` or `Result<T, E>` as if it were the inner value.
+- You modify a binding that is not `mut`.
+- A query requests `&mut Transform`, but the loop variable is not written as `mut transform`.
+- A component type is used without `#[derive(Component)]`.
+- A resource type is inserted without `#[derive(Resource)]`.
+- A system function exists but is not registered with `add_systems`.
+- Two queries may mutably access the same component on the same entity.
+- You try to mutate through `&T` instead of `&mut T`.
+- You use `Option<T>` or `Result<T, E>` as if it were the inner `T`.
+- You move a value and then try to use the old binding again.
 
 ## Checkpoint
 
-Before moving on, open `examples/03_player_input.rs` and `examples/04_velocity_body.rs` and identify:
+Open `examples/03_player_input.rs` and answer these from the code:
 
-- Which types are components?
+- Which names are types and which names are values?
+- Which type is a component?
 - Which type is a resource?
-- Which local variables are mutable?
-- Which system parameter reads input?
+- Which local bindings are mutable?
+- Which system parameter reads keyboard input?
 - Which system parameter mutates component data?
 - Which calls use `::`, and which calls use `.`?
-- Where does tuple struct `.0` access appear?
-- How does each `for` loop item shape match its query item type?
+- Where does tuple-struct `.0` access appear?
+- Why does the loop say `for mut transform in &mut players`?
 
-If you can answer those from the type signatures, you are ready for Bevy's app model.
+Then open `examples/04_velocity_body.rs` and answer:
+
+- Why is `Velocity(Vec2)` a tuple struct instead of a plain `Vec2`?
+- Which system writes `Velocity`?
+- Which system reads `Velocity` and writes `Transform`?
+- How does `Query<(&mut Transform, &Velocity), With<Body>>` shape the loop variable?
+
+If you can answer those from the signatures and type definitions, the next chapter's App and system model will feel much less mysterious.
 
 ---
 

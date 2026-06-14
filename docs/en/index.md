@@ -15,7 +15,7 @@ This tutorial teaches Rust and Bevy as one track. You will build from a blank Be
 ![RPG feature roadmap](../../assets/diagrams/rpg-feature-roadmap.png)
 
 > [!IMPORTANT]
-> This tutorial does not assume you already know Rust. Rust syntax is introduced in the order Bevy examples need it, and each chapter is tied to one runnable example.
+> This tutorial teaches Rust from the first Bevy example onward. Rust syntax appears in the order the examples need it, and each chapter is tied to one runnable example.
 
 ## Learning Contract
 
@@ -64,7 +64,7 @@ By the end, you should be able to:
 ## Run The Track
 
 > [!TIP]
-> Read one chapter, run its example, change a small rule, then move on. Do not only copy the final code. Bevy becomes easier when you keep asking: "what does this system read, and what does it write?"
+> Read one chapter, run its example, change a small rule, then move on. Treat the final code as something to inspect and modify. Bevy becomes easier when you keep asking: "what does this system read, and what does it write?"
 
 ```sh
 cargo run --example 01_empty_app

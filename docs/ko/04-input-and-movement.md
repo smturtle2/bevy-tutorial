@@ -167,7 +167,7 @@ struct Velocity(Vec2);
 
 `Body`는 movement system으로 이동 가능한 엔티티를 표시합니다. `Velocity`는 이동 방향을 저장합니다.
 
-입력 시스템은 더 이상 `Transform`을 만지지 않습니다.
+입력 시스템은 `Velocity`를 씁니다.
 
 ```rust
 fn handle_player_input(
@@ -182,7 +182,7 @@ fn handle_player_input(
 }
 ```
 
-이동 시스템은 더 이상 키보드 입력을 모릅니다.
+이동 시스템은 `Velocity`를 읽고 `Transform`을 씁니다.
 
 ```rust
 fn move_bodies(
@@ -217,7 +217,7 @@ move_bodies         -> Velocity를 읽습니다
 
 `.chain()`은 Bevy에게 이 순서로 실행하라고 알려줍니다. 순서를 지정하지 않으면 Bevy 스케줄러는 호환 가능한 시스템을 자신이 선택한 순서로 실행할 수 있습니다.
 
-나중에 시스템이 서로 다른 플러그인에 살게 되면 이 튜토리얼은 `SystemSet`으로 넘어갑니다.
+시스템이 서로 다른 플러그인에 살게 되면 `SystemSet`이 같은 ordering 계약을 플러그인 경계 밖으로 표현합니다.
 
 ## 연습
 
@@ -227,7 +227,7 @@ move_bodies         -> Velocity를 읽습니다
 2. `.chain()`을 제거하고 이동이 여전히 맞아 보이는지 관찰하세요.
 3. 두 번째 `PlayerBundle::new()`를 spawn하고 `Query<&mut Velocity, With<Player>>`가 무엇을 할지 생각해 보세요.
 
-중요한 질문은 "움직이는가?"만이 아닙니다. 중요한 질문은 "각 시스템이 어떤 엔티티에 영향을 주는가?"입니다.
+첫 질문은 "움직이는가?"입니다. 더 강한 ECS 질문은 "각 시스템이 어떤 엔티티에 영향을 주는가?"입니다.
 
 ## 흔한 실수
 

@@ -37,9 +37,9 @@ cargo run --example 10_attack_hitbox
 
 ## Bevy 포인트
 
-`Commands`로 엔티티를 `despawn()`해도 현재 루프가 즉시 중단되는 것은 아닙니다. 명령은 스케줄 경계에서 적용됩니다. 그래서 이 예제는 히트박스가 무언가를 맞췄는지 `hit_anything`에 기록한 뒤 루프 끝에서 제거 명령을 냅니다.
+`Commands`로 엔티티를 `despawn()`하면 제거 명령이 큐에 쌓이고 스케줄 경계에서 적용됩니다. 이 예제는 히트박스가 무언가를 맞췄는지 `hit_anything`에 기록한 뒤 루프 끝에서 제거 명령을 냅니다.
 
-충돌 함수 `overlaps`는 회전된 스프라이트 모양을 계산하지 않습니다. `Transform` 위치와 `Body.half_size`로 축 정렬 박스만 비교합니다. 초반 액션 RPG 판정에는 이 단순 계약이 디버그하기 쉽습니다.
+충돌 함수 `overlaps`는 `Transform` 위치와 `Body.half_size`로 축 정렬 박스를 비교합니다. 초반 액션 RPG 판정에는 이 명시적인 충돌 계약이 디버그하기 쉽습니다.
 
 ## 프레임 흐름
 

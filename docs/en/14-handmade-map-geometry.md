@@ -19,7 +19,7 @@ cargo run --example 14_handmade_map_geometry
 
 ## Contract
 
-You do not need a tilemap crate to learn map structure. This chapter builds a map from entities.
+This chapter teaches map structure by building the map from entities.
 
 ```text
 floor tile = visual sprite only

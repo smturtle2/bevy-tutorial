@@ -17,7 +17,7 @@ cargo run --example 05_plugins_sets
 
 ![The plugin and system-set example renders the same player behavior with GamePlugin, PlayerPlugin, BodyPlugin, and ordered sets visible.](../../assets/screenshots/ch05-plugins-sets.png)
 
-This example behaves like `04_velocity_body`, but the code is reorganized around spawn bundles, plugins, and named system sets. The behavior is intentionally familiar so you can focus on structure.
+This example keeps the `04_velocity_body` behavior and reorganizes the code around spawn bundles, plugins, and named system sets. Familiar behavior makes the new structure easier to inspect.
 
 ## Why Bundles
 
@@ -56,7 +56,7 @@ impl BodyBundle {
 }
 ```
 
-`BodyBundle` is not a runtime superclass. It is a spawn-time component package.
+`BodyBundle` is a spawn-time component package.
 
 After spawn, the entity simply has:
 
@@ -66,7 +66,7 @@ Velocity
 Transform
 ```
 
-That means queries never ask for `BodyBundle`. They ask for the components that came out of it:
+Queries ask for the components that came out of the bundle:
 
 ```rust
 Query<(&mut Transform, &Velocity), With<Body>>
@@ -93,7 +93,7 @@ Transform
 Sprite
 ```
 
-Flattening is why `move_bodies` can move the player. The player entity does not contain a bundle object at runtime; it contains `Body`, `Velocity`, and `Transform`.
+Flattening is why `move_bodies` can move the player. At runtime, the player entity contains `Body`, `Velocity`, and `Transform`.
 
 ## Plugins
 
@@ -109,7 +109,7 @@ impl Plugin for PlayerPlugin {
 }
 ```
 
-The plugin does not run every frame. It registers things with the app.
+The plugin runs during app construction and registers things with the app.
 
 `examples/05_plugins_sets.rs` has three plugins:
 
@@ -134,7 +134,7 @@ This is the main reason plugins matter: they keep feature registration out of `m
 
 ## SystemSet
 
-When systems live in different plugins, `.chain()` on one tuple is not enough. Use sets.
+When systems live in different plugins, sets express order across those plugin boundaries.
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]

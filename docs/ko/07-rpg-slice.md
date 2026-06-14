@@ -28,7 +28,7 @@ cargo run --example 07_rpg_slice
 - 체력과 점수 표시
 - 명시적인 시스템 실행 순서
 
-이 장이 튜토리얼의 최종 결과는 아닙니다. 이후 장에서 부드러운 카메라, 웨이브, 히트박스, 화면 고정 UI, 애니메이션 상태, 맵 지오메트리, 게임 상태, 저장/불러오기를 이 기초 위에 올립니다.
+이 장은 남은 튜토리얼의 기초 조각입니다. 이후 장에서 부드러운 카메라, 웨이브, 히트박스, 화면 고정 UI, 애니메이션 상태, 맵 지오메트리, 게임 상태, 저장/불러오기를 이 기초 위에 올립니다.
 
 ## 상수
 
@@ -44,7 +44,7 @@ const MAX_HEALTH: i32 = 5;
 const ARENA_HALF_SIZE: Vec2 = Vec2::new(420.0, 260.0);
 ```
 
-예제가 런타임에 이 값을 바꾸지 않으므로 리소스가 아닙니다. 나중에 난이도 설정이나 실시간 튜닝을 원한다면 일부는 리소스가 될 수 있습니다.
+이 예제에서는 고정 튜닝 값이므로 상수로 둡니다. 런타임에 바뀌는 난이도 설정이나 실시간 튜닝 값은 리소스로 옮길 수 있습니다.
 
 ## System Set
 
@@ -217,7 +217,7 @@ fn spawn_arena_frame(commands: &mut Commands) {
 }
 ```
 
-이 helper는 `setup`에서 호출되므로 시스템이 아닙니다. `&mut Commands`를 받아 추가 spawn을 큐에 넣습니다.
+이 helper는 `setup`에서 호출되는 일반 Rust 함수입니다. `&mut Commands`를 받아 추가 spawn을 큐에 넣습니다.
 
 ## Player Input
 
@@ -235,7 +235,7 @@ fn player_input(
 }
 ```
 
-이 시스템은 `Transform`을 건드리지 않습니다. 플레이어가 어느 방향으로 움직이고 싶은지만 말합니다.
+이 시스템은 이동 의도를 `Velocity`에 씁니다. 실제 위치 변경은 뒤의 movement 시스템이 처리합니다.
 
 ## Enemy AI
 
@@ -257,7 +257,7 @@ fn enemy_ai(
 
 `Single<&Transform, With<Player>>`는 정확히 하나의 player transform이 있어야 한다는 뜻입니다. 각 적은 자신의 transform을 읽고 자신의 velocity를 씁니다.
 
-이 단순한 AI에는 pathfinding이 없습니다. 그냥 플레이어 쪽으로 직선 이동합니다.
+이 직접 추적 AI는 플레이어 쪽으로 직선 이동합니다.
 
 ## Movement와 Arena Clamp
 
@@ -326,7 +326,7 @@ horizontal distance < combined half widths
 vertical distance   < combined half heights
 ```
 
-예제가 회전하지 않은 사각형을 쓰기 때문에 동작합니다. 일반 물리 엔진은 아닙니다.
+이 충돌은 회전하지 않은 바디를 위한 축 정렬 사각형 충돌입니다.
 
 ## Collectible: `Commands`와 `ResMut`
 

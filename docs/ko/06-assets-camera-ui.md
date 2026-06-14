@@ -181,7 +181,7 @@ commands.spawn((
 ));
 ```
 
-이것은 화면 고정 UI가 아닙니다. 월드 안의 2D 텍스트입니다. 두 시스템이 HUD를 유지합니다. 하나는 텍스트 내용을 갱신하고, 하나는 텍스트 위치를 플레이어 위로 옮깁니다.
+이 텍스트는 월드 공간의 2D 텍스트입니다. 두 시스템이 HUD처럼 보이게 유지합니다. 하나는 텍스트 내용을 갱신하고, 하나는 텍스트 위치를 플레이어 위로 옮깁니다.
 
 ```rust
 fn update_hud_text(
@@ -203,7 +203,7 @@ fn position_hud_text(
 }
 ```
 
-`Without` 필터는 장식이 아닙니다. `position_hud_text`는 player `Transform`을 읽고 HUD `Transform`을 수정합니다. 필터는 두 쿼리가 같은 엔티티에 접근하지 않는다는 사실을 Bevy에 증명합니다.
+`Without` 필터는 데이터 접근 계약의 일부입니다. `position_hud_text`는 player `Transform`을 읽고 HUD `Transform`을 수정합니다. 필터는 두 쿼리가 서로 다른 엔티티에 접근한다는 사실을 Bevy에 증명합니다.
 
 `Text2d`는 튜플 struct이므로 문자열은 `text.0`에 저장됩니다.
 
@@ -215,14 +215,14 @@ fn position_hud_text(
 
 1. HUD offset을 `+ 230.0`에서 `+ 120.0`으로 바꿔 보세요.
 2. `.chain()`을 제거하고 어떤 시스템이 이전 프레임의 위치를 읽을 수 있는지 생각해 보세요.
-3. `Sprite::from_image(...)`를 `Sprite::from_color(...)`로 바꾸고 movement, camera follow, HUD text가 asset에 의존하지 않는지 확인하세요.
+3. `Sprite::from_image(...)`를 `Sprite::from_color(...)`로 바꾸고 movement, camera follow, HUD text가 생성 색상 스프라이트에서도 같은 동작을 유지하는지 확인하세요.
 
 ## 흔한 실수
 
 - `AssetServer::load`에 `"player.png"` 대신 `"assets/player.png"`를 사용함.
 - 카메라를 잊고 아무것도 보이지 않음.
 - 그 순간 0개나 여러 개 엔티티가 유효한데 `Single`을 사용함.
-- 같은 엔티티를 매칭할 수 없다는 것을 증명하는 필터 없이 `Transform`에 대한 가변 query 두 개를 만듦.
+- `Transform`에 대한 가변 query 두 개를 만들고, 두 쿼리가 서로 다른 엔티티를 매칭한다는 증명을 필터로 제공하지 않음.
 - `Text2d`가 고정 화면 고정 UI처럼 동작한다고 기대함. 이 예제에서는 월드 공간 텍스트입니다.
 
 ---

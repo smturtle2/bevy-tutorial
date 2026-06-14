@@ -30,7 +30,7 @@ Enemy entity         = Enemy + EnemyLifetime + Body + Velocity + Sprite
 
 `WaveSpawner` decides when to queue a new wave and where the next enemy appears. `EnemyBundle::new` owns the spawn shape for an enemy. The wave system does not manually assemble random component tuples.
 
-This chapter is about spawning waves, not combat. Enemies have `EnemyLifetime(Timer)` so the example can clear a wave and demonstrate wave 2 without introducing attack systems early.
+This chapter focuses on wave spawning. `EnemyLifetime(Timer)` provides the clear condition for each wave, which lets the example reach wave 2 before the attack systems are introduced.
 
 ## Rust Point
 
@@ -72,7 +72,7 @@ Enemy expiry runs before spawning, then spawning happens before AI so newly spaw
 - Putting the wave number on each enemy makes it hard to know the global wave.
 - Spawning the whole wave in one frame removes pacing.
 - Starting the next wave while old enemies are alive changes the design; this example waits until the current wave is cleared.
-- Forgetting a clear mechanic makes wave 2 unreachable.
+- Give each wave a clear mechanic so the next wave can start.
 
 ## Change It
 

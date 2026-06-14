@@ -60,7 +60,7 @@ Single<&mut Text, (With<ScoreText>, Without<HealthText>)>
 - HUD를 `Sprite`로 만들면 카메라 이동에 같이 흔들립니다. 화면 고정 정보는 `Node`/`Text` UI로 만드세요.
 - 같은 `Text` 타입을 여러 `Single<&mut Text>`로 빌리면서 `Without`을 빼면 쿼리 충돌이 납니다.
 - 체력 비율 계산에서 정수 나눗셈을 하면 0 또는 1만 나옵니다.
-- UI는 표시일 뿐입니다. 점수나 체력의 원본 데이터를 UI 텍스트에서 다시 파싱하지 마세요.
+- UI는 표시 계층입니다. 점수와 체력의 원본 데이터는 리소스와 컴포넌트에 둡니다.
 
 ## 작게 바꿔보기
 

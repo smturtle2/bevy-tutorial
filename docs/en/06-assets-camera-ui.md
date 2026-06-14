@@ -181,7 +181,7 @@ commands.spawn((
 ));
 ```
 
-This is not screen-space UI. It is 2D text in the world. Two systems keep it useful: one updates the text content, and one moves the text above the player.
+This is world-space 2D text. Two systems keep it useful: one updates the text content, and one moves the text above the player.
 
 ```rust
 fn update_hud_text(
@@ -203,7 +203,7 @@ fn position_hud_text(
 }
 ```
 
-The `Without` filters are not decorative. `position_hud_text` reads a player `Transform` and mutates the HUD `Transform`; the filters prove to Bevy that those two queries cannot access the same entity.
+The `Without` filters are part of the data-access contract. `position_hud_text` reads a player `Transform` and mutates the HUD `Transform`; the filters prove to Bevy that those two queries access separate entities.
 
 `Text2d` is a tuple struct, so the string is stored in `text.0`.
 
@@ -215,14 +215,14 @@ Try these small changes:
 
 1. Change the HUD offset from `+ 230.0` to `+ 120.0`.
 2. Remove `.chain()` and think about which systems might read the previous frame's position.
-3. Replace `Sprite::from_image(...)` with `Sprite::from_color(...)` and confirm that movement, camera follow, and HUD text do not depend on the asset.
+3. Replace `Sprite::from_image(...)` with `Sprite::from_color(...)` and confirm that movement, camera follow, and HUD text keep the same behavior with a generated color sprite.
 
 ## Common Mistakes
 
 - Using `"assets/player.png"` instead of `"player.png"` with `AssetServer::load`.
 - Forgetting the camera and seeing nothing.
 - Using `Single` when zero or multiple entities are valid for that moment.
-- Creating two mutable queries over `Transform` without filters that prove they cannot match the same entity.
+- Creating two mutable queries over `Transform` and leaving Bevy without proof that they match separate entities.
 - Expecting `Text2d` to behave like fixed screen-space UI. In this example it is world-space text.
 
 ---
