@@ -1,6 +1,13 @@
 # 15. Game States
 
-[Index](index.md) | Previous: [Handmade map geometry](14-handmade-map-geometry.md) | Next: [Save and load progress](16-save-load-progress.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Handmade map geometry](14-handmade-map-geometry.md) · [Next: Save and load progress →](16-save-load-progress.md)
+
+</div>
+
+---
 
 Run:
 
@@ -57,3 +64,11 @@ move_player.run_if(in_state(GameState::Playing))
 - Add a settings state.
 - Make Escape return to the menu from Playing.
 - Add state-specific background colors.
+
+---
+
+<div align="center">
+
+[← Previous: Handmade map geometry](14-handmade-map-geometry.md) · [Index](index.md) · [Next: Save and load progress →](16-save-load-progress.md)
+
+</div>

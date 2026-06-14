@@ -1,6 +1,13 @@
 # 8. Smooth Camera Follow
 
-[Index](index.md) | Previous: [RPG foundation slice](07-rpg-slice.md) | Next: [Enemy waves](09-enemy-waves.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: RPG foundation slice](07-rpg-slice.md) · [Next: Enemy waves →](09-enemy-waves.md)
+
+</div>
+
+---
 
 Run:
 
@@ -65,3 +72,11 @@ The systems are chained because the camera should follow the latest player posit
 - Change `CAMERA_SMOOTHNESS` to `2.0`, then `20.0`.
 - Add an offset such as `Vec3::new(120.0, 0.0, 0.0)`.
 - Clamp the camera to the map bounds instead of clamping only the player.
+
+---
+
+<div align="center">
+
+[← Previous: RPG foundation slice](07-rpg-slice.md) · [Index](index.md) · [Next: Enemy waves →](09-enemy-waves.md)
+
+</div>

@@ -1,6 +1,13 @@
 # 8. 부드러운 카메라 추적
 
-[목차](index.md) | 이전: [RPG 기초 조각](07-rpg-slice.md) | 다음: [적 웨이브](09-enemy-waves.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: RPG 기초 조각](07-rpg-slice.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
+
+</div>
+
+---
 
 실행:
 
@@ -51,3 +58,11 @@ cargo run --example 08_smooth_camera_follow
 - `CAMERA_SMOOTHNESS`를 `2.0`, `20.0`으로 바꿔 추적 느낌을 비교하세요.
 - `CameraFollow.offset`에 `Vec3::new(120.0, 0.0, 0.0)`을 넣어보세요.
 - 플레이어가 아니라 카메라 위치를 맵 경계 안으로 제한해보세요.
+
+---
+
+<div align="center">
+
+[← 이전: RPG 기초 조각](07-rpg-slice.md) · [목차](index.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
+
+</div>

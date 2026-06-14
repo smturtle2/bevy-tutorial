@@ -1,6 +1,13 @@
 # 15. 게임 상태
 
-[목차](index.md) | 이전: [직접 만든 맵 지오메트리](14-handmade-map-geometry.md) | 다음: [진행 저장/불러오기](16-save-load-progress.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 직접 만든 맵 지오메트리](14-handmade-map-geometry.md) · [다음: 진행 저장/불러오기 →](16-save-load-progress.md)
+
+</div>
+
+---
 
 실행:
 
@@ -52,3 +59,11 @@ cargo run --example 15_game_states
 - Settings 상태를 하나 추가해보세요.
 - Playing에서 Escape를 누르면 Menu로 돌아가게 바꿔보세요.
 - 상태마다 다른 배경색을 쓰게 해보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 직접 만든 맵 지오메트리](14-handmade-map-geometry.md) · [목차](index.md) · [다음: 진행 저장/불러오기 →](16-save-load-progress.md)
+
+</div>

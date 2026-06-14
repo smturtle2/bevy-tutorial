@@ -1,6 +1,13 @@
 # 4. 입력과 이동
 
-[목차](index.md) | 이전: [ECS 기본](03-ecs-fundamentals.md) | 다음: [번들, 플러그인, 세트](05-bundles-plugins-sets.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: ECS 기본](03-ecs-fundamentals.md) · [다음: 번들, 플러그인, 세트 →](05-bundles-plugins-sets.md)
+
+</div>
+
+---
 
 이 장은 정적인 sprite를 조작 가능한 엔티티로 바꾼 뒤, 이동을 더 재사용하기 좋은 ECS 형태로 리팩터링합니다.
 
@@ -64,10 +71,10 @@ fn move_player(
 시그니처를 시스템 계약으로 읽습니다.
 
 ```text
-Reads frame time.
-Reads keyboard state.
-Reads player speed.
-Mutates Transform on entities with Player.
+프레임 시간을 읽습니다.
+키보드 상태를 읽습니다.
+플레이어 속도를 읽습니다.
+Player를 가진 엔티티의 Transform을 수정합니다.
 ```
 
 모든 조각이 한 곳에 보이므로 첫 버전으로는 좋습니다.
@@ -132,8 +139,8 @@ keyboard -> Transform
 다음 예제는 의도와 실제 움직임을 나눕니다.
 
 ```text
-input system    -> writes Velocity
-movement system -> reads Velocity, writes Transform
+입력 시스템 -> Velocity를 씁니다
+이동 시스템 -> Velocity를 읽고 Transform을 씁니다
 ```
 
 ## 둘러보기: `04_velocity_body`
@@ -200,8 +207,8 @@ fn move_bodies(
 순서가 중요합니다.
 
 ```text
-handle_player_input writes Velocity
-move_bodies reads Velocity
+handle_player_input -> Velocity를 씁니다
+move_bodies         -> Velocity를 읽습니다
 ```
 
 `.chain()`은 Bevy에게 이 순서로 실행하라고 알려줍니다. 순서를 지정하지 않으면 Bevy 스케줄러는 호환 가능한 시스템을 자신이 선택한 순서로 실행할 수 있습니다.
@@ -224,3 +231,11 @@ move_bodies reads Velocity
 - 대각선 입력을 정규화하지 않음.
 - `move_bodies`를 `With<Player>`로 필터링해서 적이나 다른 body가 재사용하지 못하게 함.
 - `.chain()`, 명시적 ordering, set 없이 시스템이 등록 순서대로 실행된다고 가정함.
+
+---
+
+<div align="center">
+
+[← 이전: ECS 기본](03-ecs-fundamentals.md) · [목차](index.md) · [다음: 번들, 플러그인, 세트 →](05-bundles-plugins-sets.md)
+
+</div>

@@ -1,6 +1,13 @@
 # 2. The Bevy App Model
 
-[Index](index.md) | Previous: [Rust for Bevy](01-rust-for-bevy.md) | Next: [ECS fundamentals](03-ecs-fundamentals.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Rust for Bevy](01-rust-for-bevy.md) · [Next: ECS fundamentals →](03-ecs-fundamentals.md)
+
+</div>
+
+---
 
 Run the first example:
 
@@ -41,6 +48,8 @@ run()                      enter the engine loop
 ```
 
 `DefaultPlugins` adds the normal engine pieces: windowing, rendering, input, assets, logging, and related defaults. Without it, many familiar Bevy features are not present.
+
+Using the Rust syntax from chapter 1, `App::new()` is an associated function on the `App` type, and `.insert_resource(...)`, `.add_plugins(...)`, `.add_systems(...)`, and `.run()` are method calls on the app builder value.
 
 ## `App` Is Configuration, Not Gameplay
 
@@ -172,3 +181,11 @@ Expected lesson: rendering is just ECS data. You make visible things by spawning
 - Mutating an existing component through `Commands` when a `Query<&mut T>` would be clearer.
 - Forgetting `DefaultPlugins`, then wondering why no window or rendering appears.
 - Spawning a sprite without a camera and seeing an empty window.
+
+---
+
+<div align="center">
+
+[← Previous: Rust for Bevy](01-rust-for-bevy.md) · [Index](index.md) · [Next: ECS fundamentals →](03-ecs-fundamentals.md)
+
+</div>

@@ -1,6 +1,13 @@
 # 17. Complete RPG Slice
 
-[Index](index.md) | Previous: [Save and load progress](16-save-load-progress.md) | Next: [Index](index.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Save and load progress](16-save-load-progress.md) · [Next: Index →](index.md)
+
+</div>
+
+---
 
 Run:
 
@@ -100,3 +107,11 @@ Esc     return to menu from pause/game over
 - Add a second collectible type.
 - Save more progress on game over.
 - Split the final example into modules once the boundaries feel stable.
+
+---
+
+<div align="center">
+
+[← Previous: Save and load progress](16-save-load-progress.md) · [Index](index.md) · [Next: Index →](index.md)
+
+</div>

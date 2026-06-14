@@ -1,6 +1,13 @@
 # 12. 화면 고정 UI
 
-[목차](index.md) | 이전: [sprite asset](11-sprite-assets.md) | 다음: [애니메이션 상태](13-animation-state.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 스프라이트 에셋](11-sprite-assets.md) · [다음: 애니메이션 상태 →](13-animation-state.md)
+
+</div>
+
+---
 
 실행:
 
@@ -58,3 +65,11 @@ Single<&mut Text, (With<ScoreText>, Without<HealthText>)>
 - HUD를 화면 오른쪽 위로 옮겨보세요.
 - stamina bar를 하나 추가하세요.
 - 체력이 낮을 때 health bar 색을 빨간색으로 바꿔보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 스프라이트 에셋](11-sprite-assets.md) · [목차](index.md) · [다음: 애니메이션 상태 →](13-animation-state.md)
+
+</div>

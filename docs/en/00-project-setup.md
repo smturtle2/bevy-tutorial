@@ -1,6 +1,13 @@
 # 0. Project Setup
 
-[Index](index.md) | Previous: [Index](index.md) | Next: [Rust for Bevy](01-rust-for-bevy.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Index](index.md) · [Next: Rust for Bevy →](01-rust-for-bevy.md)
+
+</div>
+
+---
 
 This chapter establishes the project contract. We use a normal Cargo binary crate and Bevy `0.18.1`.
 
@@ -66,3 +73,11 @@ Expected result:
 ## What Matters
 
 Cargo owns the build. Bevy owns the game loop. Your job is to register systems and data with Bevy's `App`.
+
+---
+
+<div align="center">
+
+[← Previous: Index](index.md) · [Index](index.md) · [Next: Rust for Bevy →](01-rust-for-bevy.md)
+
+</div>

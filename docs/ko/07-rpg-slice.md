@@ -1,6 +1,13 @@
 # 7. RPG 기초 조각
 
-[목차](index.md) | 이전: [에셋, 카메라, UI](06-assets-camera-ui.md) | 다음: [부드러운 카메라 추적](08-smooth-camera-follow.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 에셋, 카메라, UI](06-assets-camera-ui.md) · [다음: 부드러운 카메라 추적 →](08-smooth-camera-follow.md)
+
+</div>
+
+---
 
 실행합니다.
 
@@ -12,16 +19,16 @@ cargo run --example 07_rpg_slice
 
 이 기초 예제는 앞에서 배운 조각들을 하나의 작은 게임 루프로 합칩니다.
 
-- player input
-- simple enemy chasing
-- reusable body movement
-- arena clamping
-- collectible pickup
-- enemy damage with cooldown
-- health and score display
-- explicit system ordering
+- 플레이어 입력
+- 단순한 적 추적
+- 재사용 가능한 바디 이동
+- 경기장 경계 제한
+- 수집 아이템 획득
+- 쿨다운이 있는 적 접촉 데미지
+- 체력과 점수 표시
+- 명시적인 시스템 실행 순서
 
-이 장이 튜토리얼의 최종 결과는 아닙니다. 이후 장에서 부드러운 카메라, 웨이브, hitbox, screen-space UI, 애니메이션 상태, 맵 지오메트리, 게임 상태, 저장/불러오기를 이 기초 위에 올립니다.
+이 장이 튜토리얼의 최종 결과는 아닙니다. 이후 장에서 부드러운 카메라, 웨이브, 히트박스, 화면 고정 UI, 애니메이션 상태, 맵 지오메트리, 게임 상태, 저장/불러오기를 이 기초 위에 올립니다.
 
 ## 상수
 
@@ -37,7 +44,7 @@ const MAX_HEALTH: i32 = 5;
 const ARENA_HALF_SIZE: Vec2 = Vec2::new(420.0, 260.0);
 ```
 
-예제가 런타임에 이 값을 바꾸지 않으므로 resource가 아닙니다. 나중에 난이도 설정이나 실시간 튜닝을 원한다면 일부는 resource가 될 수 있습니다.
+예제가 런타임에 이 값을 바꾸지 않으므로 리소스가 아닙니다. 나중에 난이도 설정이나 실시간 튜닝을 원한다면 일부는 리소스가 될 수 있습니다.
 
 ## System Set
 
@@ -110,7 +117,7 @@ struct Health {
 }
 ```
 
-`Health`는 플레이어 엔티티에 속하므로 component입니다. `Score`는 예제 전체에 하나인 점수이므로 resource입니다.
+`Health`는 플레이어 엔티티에 속하므로 컴포넌트입니다. `Score`는 예제 전체에 하나인 점수이므로 리소스입니다.
 
 ```rust
 #[derive(Resource)]
@@ -126,13 +133,13 @@ struct Score(u32);
 의도적인 분리입니다.
 
 ```text
-Health = per-player component
-Score  = one game-wide resource
+Health = 플레이어 엔티티에 붙는 컴포넌트
+Score  = 게임 전체에 하나만 있는 리소스
 ```
 
 ## 명시적 Bundle
 
-기초 예제는 domain entity에 tuple spawning 대신 명시적인 bundle을 씁니다.
+기초 예제는 도메인 엔티티에 튜플 spawn 대신 명시적인 번들을 씁니다.
 
 ```rust
 #[derive(Bundle)]
@@ -184,7 +191,7 @@ Transform
 Sprite
 ```
 
-수집 아이템도 `BodyBundle`을 사용하므로 `Velocity`를 가집니다. 하지만 어떤 시스템도 collectible에 nonzero velocity를 주지 않습니다. 이렇게 하면 collectible에 쓰지 않는 컴포넌트 하나가 생기지만 bundle은 단순해집니다.
+수집 아이템도 `BodyBundle`을 사용하므로 `Velocity`를 가집니다. 하지만 어떤 시스템도 수집 아이템에 0이 아닌 속도를 주지 않습니다. 이렇게 하면 수집 아이템에 쓰지 않는 컴포넌트 하나가 생기지만 번들은 단순해집니다.
 
 ## Setup
 
@@ -344,7 +351,7 @@ fn collect_items(
 }
 ```
 
-despawn에는 entity ID가 필요하므로 쿼리에 `Entity`가 포함됩니다. `Commands`는 despawn을 큐에 넣습니다. `ResMut<Score>`는 전역 score resource에 대한 가변 접근을 줍니다.
+despawn에는 엔티티 ID가 필요하므로 쿼리에 `Entity`가 포함됩니다. `Commands`는 despawn을 큐에 넣습니다. `ResMut<Score>`는 전역 점수 리소스에 대한 가변 접근을 줍니다.
 
 ## Enemy Hit: `Local` Cooldown과 `Health`
 
@@ -376,13 +383,13 @@ fn enemy_hits_player(
 }
 ```
 
-`Local<f32>`는 이 시스템만의 cooldown 상태를 저장합니다. 시스템은 매 프레임 delta time을 빼고, hit가 발생하면 cooldown을 1초로 reset합니다.
+`Local<f32>`는 이 시스템만의 쿨다운 상태를 저장합니다. 시스템은 매 프레임 delta time을 빼고, 피격이 발생하면 쿨다운을 1초로 reset합니다.
 
-`Health`는 플레이어 컴포넌트에서 직접 수정됩니다. `(health.current - 1).max(0)`은 health가 0 아래로 내려가지 않게 합니다.
+`Health`는 플레이어 컴포넌트에서 직접 수정됩니다. `(health.current - 1).max(0)`은 체력이 0 아래로 내려가지 않게 합니다.
 
 ## Display: Health Bar와 Text HUD
 
-health bar fill은 `HealthBarFill`이 붙은 sprite입니다. display system은 이것의 크기와 위치를 갱신합니다.
+체력 막대 fill은 `HealthBarFill`이 붙은 스프라이트입니다. 표시 시스템은 이것의 크기와 위치를 갱신합니다.
 
 ```rust
 fn update_health_bar(
@@ -399,7 +406,7 @@ fn update_health_bar(
 }
 ```
 
-text HUD는 두 `Text2d` 엔티티를 갱신합니다.
+텍스트 HUD는 두 `Text2d` 엔티티를 갱신합니다.
 
 ```rust
 fn update_hud_text(
@@ -414,19 +421,19 @@ fn update_hud_text(
 }
 ```
 
-`Without` 필터는 두 mutable `Text2d` 접근이 서로 다른 엔티티에 대한 것임을 증명합니다.
+`Without` 필터는 두 가변 `Text2d` 접근이 서로 다른 엔티티에 대한 것임을 증명합니다.
 
 ## 왜 이 구조가 확장되는가
 
-각 feature는 명확한 data path를 가집니다.
+각 기능은 명확한 데이터 흐름을 가집니다.
 
 ```text
-Keyboard input -> Velocity on Player
-Enemy AI       -> Velocity on Enemy
-Velocity       -> Transform on Body
-Transform/Body -> collision decisions
-Collision      -> Score resource, Health component, despawn commands
-Health/Score   -> sprites and Text2d display
+키보드 입력    -> Player의 Velocity
+적 AI          -> Enemy의 Velocity
+Velocity       -> Body의 Transform
+Transform/Body -> 충돌 판정
+Collision      -> Score 리소스, Health 컴포넌트, despawn commands
+Health/Score   -> 스프라이트와 Text2d 표시
 ```
 
 기능을 추가할 때도 같은 어휘 안에 배치합니다.
@@ -452,9 +459,17 @@ Order dependency?     SystemSet
 
 ## 흔한 실수
 
-- 여기서 score를 component라고 문서화함. 이 예제에서 `Score`는 resource입니다.
-- 여기서 health를 resource라고 문서화함. 이 예제에서 `Health`는 플레이어 엔티티에 있습니다.
+- 여기서 score를 컴포넌트라고 문서화함. 이 예제에서 `Score`는 리소스입니다.
+- 여기서 health를 리소스라고 문서화함. 이 예제에서 `Health`는 플레이어 엔티티에 있습니다.
 - 매칭된 엔티티를 despawn해야 하는데 query에 `Entity`를 포함하지 않음.
-- AABB overlap을 center-point check로 바꾸고 rectangle size가 왜 더 이상 중요하지 않은지 고민함.
-- HUD text query에서 `Without` 필터를 제거해 mutable query conflict를 만듦.
+- AABB overlap을 중심점 검사로 바꾸고 사각형 크기가 왜 더 이상 중요하지 않은지 고민함.
+- HUD text query에서 `Without` 필터를 제거해 가변 query conflict를 만듦.
 - 이것을 physics engine으로 취급함. 회전하지 않은 사각형에 대한 hand-written collision입니다.
+
+---
+
+<div align="center">
+
+[← 이전: 에셋, 카메라, UI](06-assets-camera-ui.md) · [목차](index.md) · [다음: 부드러운 카메라 추적 →](08-smooth-camera-follow.md)
+
+</div>

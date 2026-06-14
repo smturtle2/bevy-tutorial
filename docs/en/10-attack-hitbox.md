@@ -1,6 +1,13 @@
 # 10. Attack Hitboxes
 
-[Index](index.md) | Previous: [Enemy waves](09-enemy-waves.md) | Next: [Sprite assets](11-sprite-assets.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Enemy waves](09-enemy-waves.md) · [Next: Sprite assets →](11-sprite-assets.md)
+
+</div>
+
+---
 
 Run:
 
@@ -57,3 +64,11 @@ That order lets a fresh hitbox deal damage before its lifetime cleanup can remov
 - Make hitboxes last longer.
 - Increase `damage`.
 - Despawn the hitbox after the first enemy only, or let it pierce multiple enemies.
+
+---
+
+<div align="center">
+
+[← Previous: Enemy waves](09-enemy-waves.md) · [Index](index.md) · [Next: Sprite assets →](11-sprite-assets.md)
+
+</div>

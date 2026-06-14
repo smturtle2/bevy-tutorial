@@ -1,6 +1,13 @@
 # 13. Animation State
 
-[Index](index.md) | Previous: [Screen-space UI](12-screen-space-ui.md) | Next: [Handmade map geometry](14-handmade-map-geometry.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Screen-space UI](12-screen-space-ui.md) · [Next: Handmade map geometry →](14-handmade-map-geometry.md)
+
+</div>
+
+---
 
 Run:
 
@@ -62,3 +69,11 @@ Attack has its own timer so the attack frame is visible even if the player relea
 - Add a longer attack timer.
 - Add a third run frame.
 - Flip the sprite when moving left.
+
+---
+
+<div align="center">
+
+[← Previous: Screen-space UI](12-screen-space-ui.md) · [Index](index.md) · [Next: Handmade map geometry →](14-handmade-map-geometry.md)
+
+</div>

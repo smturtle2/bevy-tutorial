@@ -1,6 +1,13 @@
 # 6. Assets, Camera, And UI
 
-[Index](index.md) | Previous: [Bundles, plugins, and sets](05-bundles-plugins-sets.md) | Next: [RPG foundation slice](07-rpg-slice.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Bundles, plugins, and sets](05-bundles-plugins-sets.md) · [Next: RPG foundation slice →](07-rpg-slice.md)
+
+</div>
+
+---
 
 The early examples use colored sprites because they keep asset loading out of the first ECS lessons. This chapter adds three common presentation features while keeping the game logic small:
 
@@ -215,3 +222,11 @@ Try these small changes:
 - Using `Single` when zero or multiple entities are valid for that moment.
 - Creating two mutable queries over `Transform` without filters that prove they cannot match the same entity.
 - Expecting `Text2d` to behave like fixed screen-space UI. In this example it is world-space text.
+
+---
+
+<div align="center">
+
+[← Previous: Bundles, plugins, and sets](05-bundles-plugins-sets.md) · [Index](index.md) · [Next: RPG foundation slice →](07-rpg-slice.md)
+
+</div>

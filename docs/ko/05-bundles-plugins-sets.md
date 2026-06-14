@@ -1,6 +1,13 @@
 # 5. 번들, 플러그인, 세트
 
-[목차](index.md) | 이전: [입력과 이동](04-input-and-movement.md) | 다음: [에셋, 카메라, UI](06-assets-camera-ui.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 입력과 이동](04-input-and-movement.md) · [다음: 에셋, 카메라, UI →](06-assets-camera-ui.md)
+
+</div>
+
+---
 
 실행합니다.
 
@@ -8,17 +15,17 @@
 cargo run --example 05_plugins_sets
 ```
 
-이 예제는 `04_velocity_body`처럼 동작하지만, 코드는 spawn bundle, plugin, 이름 있는 system set 중심으로 재구성되어 있습니다. 동작은 일부러 익숙하게 유지해서 구조에 집중할 수 있게 합니다.
+이 예제는 `04_velocity_body`처럼 동작하지만, 코드는 spawn 번들, 플러그인, 이름 있는 system set 중심으로 재구성되어 있습니다. 동작은 일부러 익숙하게 유지해서 구조에 집중할 수 있게 합니다.
 
 ## Bundle을 쓰는 이유
 
-작은 예제에서는 tuple spawning도 괜찮습니다.
+작은 예제에서는 튜플 spawn도 괜찮습니다.
 
 ```rust
 commands.spawn((Player, Velocity(Vec2::ZERO), Transform::default()));
 ```
 
-예제가 커지면 반복되는 spawn tuple은 검토하기 어려워집니다. 이 프로젝트는 더 엄격한 규칙을 씁니다.
+예제가 커지면 반복되는 spawn 튜플은 검토하기 어려워집니다. 이 프로젝트는 더 엄격한 규칙을 씁니다.
 
 ```text
 Domain entities are spawned through Bundle + impl new().
@@ -84,7 +91,7 @@ Transform
 Sprite
 ```
 
-이 flattening 덕분에 `move_bodies`가 플레이어를 움직일 수 있습니다. 플레이어 엔티티는 런타임에 bundle 객체를 담고 있지 않습니다. `Body`, `Velocity`, `Transform`을 담고 있습니다.
+이렇게 평평하게 펼쳐지기 때문에 `move_bodies`가 플레이어를 움직일 수 있습니다. 플레이어 엔티티는 런타임에 번들 객체를 담고 있지 않습니다. `Body`, `Velocity`, `Transform`을 담고 있습니다.
 
 ## Plugin
 
@@ -105,9 +112,9 @@ impl Plugin for PlayerPlugin {
 `examples/05_plugins_sets.rs`에는 세 플러그인이 있습니다.
 
 ```text
-GamePlugin   inserts clear color, configures order, adds feature plugins
-BodyPlugin   inserts BodySpeed and registers move_bodies
-PlayerPlugin registers player spawn and player input
+GamePlugin   clear color를 넣고, 실행 순서를 설정하고, 기능 플러그인을 추가합니다
+BodyPlugin   BodySpeed를 넣고 move_bodies를 등록합니다
+PlayerPlugin 플레이어 생성과 플레이어 입력을 등록합니다
 ```
 
 `main`은 작게 유지됩니다.
@@ -125,7 +132,7 @@ fn main() {
 
 ## SystemSet
 
-시스템이 서로 다른 플러그인에 있으면 한 tuple에 `.chain()`을 붙이는 것만으로는 충분하지 않습니다. set을 씁니다.
+시스템이 서로 다른 플러그인에 있으면 한 튜플에 `.chain()`을 붙이는 것만으로는 충분하지 않습니다. set을 씁니다.
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -170,7 +177,15 @@ Update
 
 ## 흔한 실수
 
-- spawn 후 bundle 타입을 query함. 펼쳐진 컴포넌트를 query하세요.
-- feature boundary가 분명해진 뒤에도 모든 시스템을 한 플러그인에 넣음.
-- plugin add order만으로 프레임 순서가 충분하다고 가정함. update order가 중요하면 set을 쓰세요.
-- 필요한 module boundary가 없는데 bundle 필드를 `pub`으로 만듦.
+- spawn 후 번들 타입을 query함. 펼쳐진 컴포넌트를 query하세요.
+- 기능 경계가 분명해진 뒤에도 모든 시스템을 한 플러그인에 넣음.
+- 플러그인 추가 순서만으로 프레임 순서가 충분하다고 가정함. update 순서가 중요하면 set을 쓰세요.
+- 필요한 모듈 경계가 없는데 번들 필드를 `pub`으로 만듦.
+
+---
+
+<div align="center">
+
+[← 이전: 입력과 이동](04-input-and-movement.md) · [목차](index.md) · [다음: 에셋, 카메라, UI →](06-assets-camera-ui.md)
+
+</div>

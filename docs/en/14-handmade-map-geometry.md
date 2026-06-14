@@ -1,6 +1,13 @@
 # 14. Handmade Map Geometry
 
-[Index](index.md) | Previous: [Animation state](13-animation-state.md) | Next: [Game states](15-game-states.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Animation state](13-animation-state.md) · [Next: Game states →](15-game-states.md)
+
+</div>
+
+---
 
 Run:
 
@@ -49,3 +56,11 @@ The example uses `SystemSet` to make that order visible.
 - Add another wall rectangle.
 - Increase player size and observe collision behavior.
 - Add an exit zone as a non-wall trigger.
+
+---
+
+<div align="center">
+
+[← Previous: Animation state](13-animation-state.md) · [Index](index.md) · [Next: Game states →](15-game-states.md)
+
+</div>

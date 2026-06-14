@@ -1,6 +1,13 @@
 # 2. Bevy 앱 모델
 
-[목차](index.md) | 이전: [Bevy를 위한 Rust](01-rust-for-bevy.md) | 다음: [ECS 기본](03-ecs-fundamentals.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: Bevy를 위한 Rust](01-rust-for-bevy.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
+
+</div>
+
+---
 
 첫 예제를 실행합니다.
 
@@ -33,14 +40,16 @@ fn main() {
 체인을 위에서 아래로 읽으세요.
 
 ```text
-App::new()                 create the app builder
-insert_resource(...)       store one global value in the world
-add_plugins(DefaultPlugins) add Bevy's standard engine plugins
-add_systems(Startup, ...)  register one startup system
-run()                      enter the engine loop
+App::new()                  앱 빌더를 만든다
+insert_resource(...)        월드에 전역 값 하나를 저장한다
+add_plugins(DefaultPlugins) Bevy의 기본 엔진 플러그인을 추가한다
+add_systems(Startup, ...)   startup 시스템 하나를 등록한다
+run()                       엔진 루프에 들어간다
 ```
 
 `DefaultPlugins`는 일반적인 엔진 구성요소를 추가합니다. 창, 렌더링, 입력, 에셋, 로깅과 관련 기본값이 여기에 들어갑니다. 이것이 없으면 익숙한 Bevy 기능 다수가 존재하지 않습니다.
+
+1장에서 배운 Rust 문법으로 보면 `App::new()`는 `App` 타입의 연관 함수이고, 뒤의 `.insert_resource(...)`, `.add_plugins(...)`, `.add_systems(...)`, `.run()`은 만들어진 앱 빌더 값을 이어받는 메서드 호출입니다.
 
 ## `App`은 설정이지 게임플레이가 아닙니다
 
@@ -49,8 +58,8 @@ run()                      enter the engine loop
 중요한 구분은 다음입니다.
 
 ```text
-App setup = register plugins, resources, systems, and schedules
-Systems   = do work by reading and writing ECS data
+App 설정 = 플러그인, 리소스, 시스템, 스케줄을 등록한다
+시스템   = ECS 데이터를 읽고 쓰는 일을 한다
 ```
 
 ## Startup과 Update
@@ -65,8 +74,8 @@ Bevy 시스템은 스케줄에 등록되는 평범한 Rust 함수입니다.
 스케줄이 실행 시점을 정합니다.
 
 ```text
-Startup = run once when the app starts
-Update  = run every frame
+Startup = 앱이 시작될 때 한 번 실행
+Update  = 매 프레임 실행
 ```
 
 함수 이름이 타이밍을 정하지 않습니다. `setup`이라는 이름의 함수도 `Update`에 등록하면 매 프레임 실행됩니다.
@@ -95,8 +104,8 @@ Commands는 지연됩니다. 시스템 안에서 `commands.spawn(...)`을 호출
 경험칙:
 
 ```text
-Commands = change which entities/components exist
-Query    = read or mutate component values that already exist
+Commands = 어떤 엔티티/컴포넌트가 존재하는지 바꾼다
+Query    = 이미 존재하는 컴포넌트 값을 읽거나 수정한다
 ```
 
 ## 둘러보기: `02_spawn_sprite`
@@ -151,9 +160,9 @@ impl Plugin for GamePlugin {
 이후 예제들은 플러그인을 사용해 책임을 나눕니다.
 
 ```text
-GamePlugin   = top-level game setup and ordering
-BodyPlugin   = movement data and movement systems
-PlayerPlugin = player spawn and input systems
+GamePlugin   = 최상위 게임 설정과 실행 순서
+BodyPlugin   = 이동 데이터와 이동 시스템
+PlayerPlugin = 플레이어 생성과 입력 시스템
 ```
 
 ## 체크포인트
@@ -172,3 +181,11 @@ PlayerPlugin = player spawn and input systems
 - 기존 컴포넌트 값을 바꾸는 데 `Query<&mut T>`가 더 명확한데도 `Commands`를 사용함.
 - `DefaultPlugins`를 잊고 창이나 렌더링이 왜 없는지 고민함.
 - 카메라 없이 sprite를 spawn하고 빈 창만 봄.
+
+---
+
+<div align="center">
+
+[← 이전: Bevy를 위한 Rust](01-rust-for-bevy.md) · [목차](index.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
+
+</div>

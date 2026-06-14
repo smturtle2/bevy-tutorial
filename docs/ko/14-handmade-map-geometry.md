@@ -1,6 +1,13 @@
 # 14. 직접 만든 맵 지오메트리
 
-[목차](index.md) | 이전: [애니메이션 상태](13-animation-state.md) | 다음: [게임 상태](15-game-states.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 애니메이션 상태](13-animation-state.md) · [다음: 게임 상태 →](15-game-states.md)
+
+</div>
+
+---
 
 실행:
 
@@ -52,3 +59,11 @@ cargo run --example 14_handmade_map_geometry
 - 벽 사각형을 하나 더 추가하세요.
 - 플레이어 크기를 키우고 충돌 반응을 확인하세요.
 - 벽이 아닌 exit zone trigger를 추가해보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 애니메이션 상태](13-animation-state.md) · [목차](index.md) · [다음: 게임 상태 →](15-game-states.md)
+
+</div>

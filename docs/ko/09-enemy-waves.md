@@ -1,6 +1,13 @@
 # 9. 적 웨이브
 
-[목차](index.md) | 이전: [부드러운 카메라 추적](08-smooth-camera-follow.md) | 다음: [공격 hitbox](10-attack-hitbox.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 부드러운 카메라 추적](08-smooth-camera-follow.md) · [다음: 공격 히트박스 →](10-attack-hitbox.md)
+
+</div>
+
+---
 
 실행:
 
@@ -10,7 +17,7 @@ cargo run --example 09_enemy_waves
 
 이 장의 계약은 웨이브 진행 상태를 리소스로 두고, 타이머가 끝날 때마다 적을 생성하는 것입니다. 적은 플레이어 위치를 읽어 속도를 정하고, 이동 시스템은 속도를 위치에 반영합니다.
 
-이 장은 전투 장이 아닙니다. 그래서 적은 `EnemyLifetime`이 끝나면 자동으로 사라집니다. 이 데모용 clear mechanic 덕분에 2웨이브 이상이 실제로 도달 가능합니다.
+이 장은 전투 장이 아닙니다. 그래서 적은 `EnemyLifetime`이 끝나면 자동으로 사라집니다. 이 데모용 클리어 규칙 덕분에 2웨이브 이상이 실제로 도달 가능합니다.
 
 ## 핵심 ECS 계약
 
@@ -48,7 +55,7 @@ cargo run --example 09_enemy_waves
 
 - `Timer`를 `tick`하지 않으면 `just_finished()`는 참이 되지 않습니다.
 - `remaining_to_spawn == 0`만 보고 다음 웨이브를 시작하면 아직 살아있는 적과 새 웨이브가 겹칩니다.
-- 적을 제거하는 clear mechanic이 없으면 2웨이브에 도달할 수 없습니다.
+- 적을 제거하는 클리어 규칙이 없으면 2웨이브에 도달할 수 없습니다.
 - AI와 이동 순서가 바뀌면 적이 이전 프레임 속도로 움직입니다.
 - `Query<Entity, With<Enemy>>`가 필요하지 않은데 엔티티를 읽으면 코드 의도가 흐려집니다. 카운트만 필요하면 `Query<(), With<Enemy>>`로 충분합니다.
 
@@ -56,4 +63,12 @@ cargo run --example 09_enemy_waves
 
 - 웨이브마다 생성되는 적 수를 더 크게 바꿔보세요.
 - `SPAWN_POINTS`에 새 생성 지점을 추가하세요.
-- hitbox 장을 끝낸 뒤 `EnemyLifetime` 대신 실제 전투로 웨이브를 clear하게 바꿔보세요.
+- 히트박스 장을 끝낸 뒤 `EnemyLifetime` 대신 실제 전투로 웨이브를 clear하게 바꿔보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 부드러운 카메라 추적](08-smooth-camera-follow.md) · [목차](index.md) · [다음: 공격 히트박스 →](10-attack-hitbox.md)
+
+</div>

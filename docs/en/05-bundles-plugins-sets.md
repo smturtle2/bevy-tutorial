@@ -1,6 +1,13 @@
 # 5. Bundles, Plugins, And Sets
 
-[Index](index.md) | Previous: [Input and movement](04-input-and-movement.md) | Next: [Assets, camera, and UI](06-assets-camera-ui.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Input and movement](04-input-and-movement.md) · [Next: Assets, camera, and UI →](06-assets-camera-ui.md)
+
+</div>
+
+---
 
 Run:
 
@@ -174,3 +181,11 @@ Try these changes in a local experiment:
 - Putting every system in one plugin even after feature boundaries are clear.
 - Assuming plugin add order is enough for frame ordering. Use sets when update order matters.
 - Making bundle fields `pub` without a module boundary that needs them.
+
+---
+
+<div align="center">
+
+[← Previous: Input and movement](04-input-and-movement.md) · [Index](index.md) · [Next: Assets, camera, and UI →](06-assets-camera-ui.md)
+
+</div>

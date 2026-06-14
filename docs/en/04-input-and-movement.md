@@ -1,6 +1,13 @@
 # 4. Input And Movement
 
-[Index](index.md) | Previous: [ECS fundamentals](03-ecs-fundamentals.md) | Next: [Bundles, plugins, and sets](05-bundles-plugins-sets.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: ECS fundamentals](03-ecs-fundamentals.md) · [Next: Bundles, plugins, and sets →](05-bundles-plugins-sets.md)
+
+</div>
+
+---
 
 This chapter turns a static sprite into a controllable entity, then refactors movement into a more reusable ECS shape.
 
@@ -224,3 +231,11 @@ The important question is not only "does it move?" The important question is "wh
 - Forgetting to normalize diagonal input.
 - Making `move_bodies` filter with `With<Player>`, which prevents enemies or other bodies from reusing it.
 - Assuming systems run in registration order without `.chain()`, explicit ordering, or sets.
+
+---
+
+<div align="center">
+
+[← Previous: ECS fundamentals](03-ecs-fundamentals.md) · [Index](index.md) · [Next: Bundles, plugins, and sets →](05-bundles-plugins-sets.md)
+
+</div>

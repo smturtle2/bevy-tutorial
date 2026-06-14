@@ -1,6 +1,13 @@
 # 16. Save And Load Progress
 
-[Index](index.md) | Previous: [Game states](15-game-states.md) | Next: [Complete RPG slice](17-complete-rpg-slice.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Game states](15-game-states.md) · [Next: Complete RPG slice →](17-complete-rpg-slice.md)
+
+</div>
+
+---
 
 Run:
 
@@ -72,3 +79,11 @@ Delete  reset progress and remove the file
 - Add `gold`.
 - Add `last_selected_character`.
 - Save on game over instead of only on F5.
+
+---
+
+<div align="center">
+
+[← Previous: Game states](15-game-states.md) · [Index](index.md) · [Next: Complete RPG slice →](17-complete-rpg-slice.md)
+
+</div>

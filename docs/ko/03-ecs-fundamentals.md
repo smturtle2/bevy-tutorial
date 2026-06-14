@@ -1,6 +1,13 @@
 # 3. ECS 기본
 
-[목차](index.md) | 이전: [Bevy 앱 모델](02-bevy-app-model.md) | 다음: [입력과 이동](04-input-and-movement.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: Bevy 앱 모델](02-bevy-app-model.md) · [다음: 입력과 이동 →](04-input-and-movement.md)
+
+</div>
+
+---
 
 ECS는 Entity Component System입니다.
 
@@ -37,11 +44,11 @@ struct Player;
 struct Velocity(Vec2);
 ```
 
-`Player`는 marker component입니다. 엔티티가 플레이어임을 표시합니다.
+`Player`는 마커 컴포넌트(marker component)입니다. 엔티티가 플레이어임을 표시합니다.
 
-`Velocity`는 data component입니다. 이동 방향이나 속도를 `Vec2`로 저장합니다.
+`Velocity`는 데이터 컴포넌트(data component)입니다. 이동 방향이나 속도를 `Vec2`로 저장합니다.
 
-최종 예제는 marker component와 data component를 모두 씁니다.
+최종 예제는 마커 컴포넌트와 데이터 컴포넌트를 모두 씁니다.
 
 ```rust
 #[derive(Component)]
@@ -82,8 +89,8 @@ Query<&mut Transform, With<Player>>
 이렇게 읽습니다.
 
 ```text
-Find entities with Player.
-From each one, mutably borrow Transform.
+Player를 가진 엔티티를 찾습니다.
+각 엔티티에서 Transform을 가변으로 빌립니다.
 ```
 
 같은 엔티티에서 여러 컴포넌트를 가져올 수도 있습니다.
@@ -95,9 +102,9 @@ Query<(&mut Transform, &Velocity), With<Body>>
 이렇게 읽습니다.
 
 ```text
-Find entities with Body, Transform, and Velocity.
-Mutate Transform.
-Read Velocity.
+Body, Transform, Velocity를 가진 엔티티를 찾습니다.
+Transform을 수정합니다.
+Velocity를 읽습니다.
 ```
 
 데이터 접근이 드러납니다.
@@ -227,13 +234,13 @@ fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), W
 본문을 읽기 전에도 알 수 있습니다.
 
 ```text
-Reads Time.
-Finds entities with Body, Transform, and Velocity.
-Mutates Transform.
-Reads Velocity.
-Does not spawn or despawn entities.
-Does not read keyboard input.
-Does not touch health or score.
+Time을 읽습니다.
+Body, Transform, Velocity를 가진 엔티티를 찾습니다.
+Transform을 수정합니다.
+Velocity를 읽습니다.
+엔티티를 생성하거나 제거하지 않습니다.
+키보드 입력을 읽지 않습니다.
+체력이나 점수를 건드리지 않습니다.
 ```
 
 그래서 Bevy 코드는 시스템이 작을수록 쉬워집니다.
@@ -242,9 +249,9 @@ Does not touch health or score.
 
 아래 시스템 각각이 무엇을 읽고 쓰는지 구현을 보기 전에 적어 보세요.
 
-- `player_input` in `examples/07_rpg_slice.rs`
-- `collect_items` in `examples/07_rpg_slice.rs`
-- `update_health_bar` in `examples/07_rpg_slice.rs`
+- `examples/07_rpg_slice.rs`의 `player_input`
+- `examples/07_rpg_slice.rs`의 `collect_items`
+- `examples/07_rpg_slice.rs`의 `update_health_bar`
 
 ## 흔한 실수
 
@@ -252,3 +259,11 @@ Does not touch health or score.
 - marker를 `With<Player>`로 충분히 필터링할 수 있는데 `&Player`로 쿼리함.
 - `Commands`가 지연된다는 사실을 잊음.
 - 입력 읽기, 엔티티 이동, 충돌 처리, 점수 갱신, 표시 갱신을 모두 한 큰 시스템에 넣음.
+
+---
+
+<div align="center">
+
+[← 이전: Bevy 앱 모델](02-bevy-app-model.md) · [목차](index.md) · [다음: 입력과 이동 →](04-input-and-movement.md)
+
+</div>

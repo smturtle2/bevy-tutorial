@@ -1,6 +1,13 @@
 # 11. 스프라이트 에셋
 
-[목차](index.md) | 이전: [공격 hitbox](10-attack-hitbox.md) | 다음: [screen-space UI](12-screen-space-ui.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 공격 히트박스](10-attack-hitbox.md) · [다음: 화면 고정 UI →](12-screen-space-ui.md)
+
+</div>
+
+---
 
 실행:
 
@@ -49,6 +56,14 @@ cargo run --example 11_sprite_assets
 
 ## 작게 바꿔보기
 
-- `enemy.png` 대신 다른 asset을 로드해보세요.
+- `enemy.png` 대신 다른 에셋을 로드해보세요.
 - `DisplaySpriteBundle`을 하나 더 생성하세요.
-- `Transform::from_scale`로 sprite 크기를 바꿔보세요.
+- `Transform::from_scale`로 스프라이트 크기를 바꿔보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 공격 히트박스](10-attack-hitbox.md) · [목차](index.md) · [다음: 화면 고정 UI →](12-screen-space-ui.md)
+
+</div>

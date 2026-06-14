@@ -1,6 +1,13 @@
 # 7. RPG Foundation Slice
 
-[Index](index.md) | Previous: [Assets, camera, and UI](06-assets-camera-ui.md) | Next: [Smooth camera follow](08-smooth-camera-follow.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Assets, camera, and UI](06-assets-camera-ui.md) · [Next: Smooth camera follow →](08-smooth-camera-follow.md)
+
+</div>
+
+---
 
 Run:
 
@@ -458,3 +465,11 @@ Try one change at a time:
 - Replacing AABB overlap with a center-point check and then wondering why rectangle sizes no longer matter.
 - Removing the `Without` filters from the HUD text query and creating a mutable query conflict.
 - Treating this as a physics engine. It is hand-written collision for unrotated rectangles.
+
+---
+
+<div align="center">
+
+[← Previous: Assets, camera, and UI](06-assets-camera-ui.md) · [Index](index.md) · [Next: Smooth camera follow →](08-smooth-camera-follow.md)
+
+</div>

@@ -1,6 +1,13 @@
 # 0. 프로젝트 설정
 
-[목차](index.md) | 이전: [목차](index.md) | 다음: [Bevy를 위한 Rust](01-rust-for-bevy.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 목차](index.md) · [다음: Bevy를 위한 Rust →](01-rust-for-bevy.md)
+
+</div>
+
+---
 
 이 장은 프로젝트의 기준을 정합니다. 일반 Cargo 바이너리 크레이트를 사용하고, Bevy 버전은 `0.18.1`입니다.
 
@@ -64,3 +71,11 @@ cargo run
 ## 중요한 점
 
 Cargo는 빌드를 담당합니다. Bevy는 게임 루프를 담당합니다. 우리는 Bevy의 `App`에 시스템과 데이터를 등록합니다.
+
+---
+
+<div align="center">
+
+[← 이전: 목차](index.md) · [목차](index.md) · [다음: Bevy를 위한 Rust →](01-rust-for-bevy.md)
+
+</div>

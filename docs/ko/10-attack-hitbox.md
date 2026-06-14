@@ -1,6 +1,13 @@
 # 10. 공격 히트박스
 
-[목차](index.md) | 이전: [적 웨이브](09-enemy-waves.md) | 다음: [sprite asset](11-sprite-assets.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 적 웨이브](09-enemy-waves.md) · [다음: 스프라이트 에셋 →](11-sprite-assets.md)
+
+</div>
+
+---
 
 실행:
 
@@ -22,7 +29,7 @@ cargo run --example 10_attack_hitbox
 
 ## Rust 포인트
 
-`Facing(Vec2)`와 `Velocity(Vec2)`는 tuple struct입니다. 같은 `Vec2`라도 의미가 다르면 다른 타입으로 감싸는 편이 안전합니다. 시스템 시그니처에서 `&mut Facing`과 `&mut Velocity`가 분리되므로 읽는 사람도 의도를 바로 압니다.
+`Facing(Vec2)`와 `Velocity(Vec2)`는 튜플 struct입니다. 같은 `Vec2`라도 의미가 다르면 다른 타입으로 감싸는 편이 안전합니다. 시스템 시그니처에서 `&mut Facing`과 `&mut Velocity`가 분리되므로 읽는 사람도 의도를 바로 압니다.
 
 `atan2`로 방향 벡터를 회전 각도로 바꾸고 `Quat::from_rotation_z(angle)`에 넣습니다. 2D에서도 Bevy의 `Transform.rotation`은 3D 회전 타입인 `Quat`를 사용합니다.
 
@@ -53,3 +60,11 @@ cargo run --example 10_attack_hitbox
 - `AttackHitbox`의 수명을 늘려 판정이 오래 남게 해보세요.
 - `damage`를 2로 바꿔 적이 한 번에 죽는지 확인하세요.
 - 히트박스를 첫 적에게만 맞게 할지, 여러 적을 관통하게 할지 규칙을 바꿔보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 적 웨이브](09-enemy-waves.md) · [목차](index.md) · [다음: 스프라이트 에셋 →](11-sprite-assets.md)
+
+</div>

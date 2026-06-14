@@ -1,12 +1,19 @@
 # 6. 에셋, 카메라, UI
 
-[목차](index.md) | 이전: [번들, 플러그인, 세트](05-bundles-plugins-sets.md) | 다음: [RPG 기초 조각](07-rpg-slice.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [다음: RPG 기초 조각 →](07-rpg-slice.md)
+
+</div>
+
+---
 
 초기 예제는 색 sprite를 사용합니다. 첫 ECS 수업에서 asset loading을 제외할 수 있기 때문입니다. 이 장은 게임 로직을 작게 유지하면서 흔한 presentation 기능 세 가지를 추가합니다.
 
 - `AssetServer`로 이미지 로드
 - 플레이어를 따라가는 카메라
-- `Text2d`로 world-space HUD 텍스트 표시
+- `Text2d`로 월드 공간 HUD 텍스트 표시
 
 실행합니다.
 
@@ -109,7 +116,7 @@ Sprite::from_image(asset_server.load("player.png")) // image asset
 Sprite::from_color(Color::srgb(0.18, 0.22, 0.28), Vec2::new(900.0, 540.0))
 ```
 
-이것은 자연스러운 조합입니다. 정체성이 중요한 곳에는 asset을 쓰고, 단순한 shape이면 colored primitive로 충분합니다.
+이것은 자연스러운 조합입니다. 정체성이 중요한 곳에는 에셋을 쓰고, 단순한 shape이면 colored primitive로 충분합니다.
 
 ## 정확히 하나의 플레이어를 위한 `Single`
 
@@ -128,8 +135,8 @@ fn move_player(
 `Single<&mut Transform, With<Player>>`의 뜻:
 
 ```text
-There must be exactly one entity with Player and Transform.
-Give this system mutable access to that Transform.
+Player와 Transform을 가진 엔티티가 정확히 하나 있어야 합니다.
+이 시스템에 그 Transform에 대한 가변 접근을 줍니다.
 ```
 
 `Query<&mut Transform, With<Player>>`보다 강한 계약입니다. `Query`는 0개, 1개, 여러 개 엔티티를 매칭할 수 있습니다. 예제나 기능이 정말 정확히 하나의 match를 요구할 때 `Single`을 쓰세요.
@@ -172,7 +179,7 @@ commands.spawn((
 ));
 ```
 
-이것은 screen-space UI가 아닙니다. 월드 안의 2D 텍스트입니다. 두 시스템이 HUD를 유지합니다. 하나는 텍스트 내용을 갱신하고, 하나는 텍스트 위치를 플레이어 위로 옮깁니다.
+이것은 화면 고정 UI가 아닙니다. 월드 안의 2D 텍스트입니다. 두 시스템이 HUD를 유지합니다. 하나는 텍스트 내용을 갱신하고, 하나는 텍스트 위치를 플레이어 위로 옮깁니다.
 
 ```rust
 fn update_hud_text(
@@ -196,7 +203,7 @@ fn position_hud_text(
 
 `Without` 필터는 장식이 아닙니다. `position_hud_text`는 player `Transform`을 읽고 HUD `Transform`을 수정합니다. 필터는 두 쿼리가 같은 엔티티에 접근하지 않는다는 사실을 Bevy에 증명합니다.
 
-`Text2d`는 tuple struct이므로 문자열은 `text.0`에 저장됩니다.
+`Text2d`는 튜플 struct이므로 문자열은 `text.0`에 저장됩니다.
 
 텍스트 transform도 함께 갱신됩니다. 카메라가 플레이어를 따라가므로 HUD 같은 텍스트가 화면 위쪽 근처에 보이게 됩니다.
 
@@ -213,5 +220,13 @@ fn position_hud_text(
 - `AssetServer::load`에 `"player.png"` 대신 `"assets/player.png"`를 사용함.
 - 카메라를 잊고 아무것도 보이지 않음.
 - 그 순간 0개나 여러 개 엔티티가 유효한데 `Single`을 사용함.
-- 같은 엔티티를 매칭할 수 없다는 것을 증명하는 필터 없이 `Transform`에 대한 mutable query 두 개를 만듦.
-- `Text2d`가 고정 screen-space UI처럼 동작한다고 기대함. 이 예제에서는 world-space text입니다.
+- 같은 엔티티를 매칭할 수 없다는 것을 증명하는 필터 없이 `Transform`에 대한 가변 query 두 개를 만듦.
+- `Text2d`가 고정 화면 고정 UI처럼 동작한다고 기대함. 이 예제에서는 월드 공간 텍스트입니다.
+
+---
+
+<div align="center">
+
+[← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [목차](index.md) · [다음: RPG 기초 조각 →](07-rpg-slice.md)
+
+</div>

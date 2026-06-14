@@ -1,6 +1,13 @@
 # 17. 완성된 RPG 조각
 
-[목차](index.md) | 이전: [진행 저장/불러오기](16-save-load-progress.md) | 다음: [목차](index.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 진행 저장/불러오기](16-save-load-progress.md) · [다음: 목차 →](index.md)
+
+</div>
+
+---
 
 실행:
 
@@ -29,7 +36,7 @@ cargo run --example 17_complete_rpg_slice
 
 이 예제는 작은 타입을 많이 씁니다. `Health`, `Facing`, `RunStats`, `SaveStatus`, `SpriteAssets`는 모두 단순하지만 서로 다른 의미를 가진 데이터입니다. Rust에서는 이런 타입 분리가 컴파일러가 실수를 잡을 수 있는 경계를 만듭니다.
 
-`start_run(commands, assets, stats, spawner)`는 새 게임 시작에 필요한 초기화를 한곳에 모읍니다. `*stats = RunStats::default();`처럼 mutable reference가 가리키는 값을 교체하고, `spawner.reset()`으로 웨이브 리소스를 초기 상태로 되돌립니다.
+`start_run(commands, assets, stats, spawner)`는 새 게임 시작에 필요한 초기화를 한곳에 모읍니다. `*stats = RunStats::default();`처럼 mutable 참조가 가리키는 값을 교체하고, `spawner.reset()`으로 웨이브 리소스를 초기 상태로 되돌립니다.
 
 ## Bevy 포인트
 
@@ -68,5 +75,13 @@ HUD는 화면 UI이고, 플레이어/적/벽/보석은 월드 엔티티입니다
 
 - 적 투사체를 추가하세요.
 - 두 번째 collectible 타입을 추가하세요.
-- 게임오버 저장 시 더 많은 progress 필드를 저장하세요.
+- 게임오버 저장 시 더 많은 진행도 필드를 저장하세요.
 - 경계가 충분히 익숙해지면 최종 예제를 모듈로 분리하세요.
+
+---
+
+<div align="center">
+
+[← 이전: 진행 저장/불러오기](16-save-load-progress.md) · [목차](index.md) · [다음: 목차 →](index.md)
+
+</div>

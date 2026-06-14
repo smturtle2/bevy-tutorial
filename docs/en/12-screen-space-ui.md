@@ -1,6 +1,13 @@
 # 12. Screen-Space UI
 
-[Index](index.md) | Previous: [Sprite assets](11-sprite-assets.md) | Next: [Animation state](13-animation-state.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Sprite assets](11-sprite-assets.md) · [Next: Animation state →](13-animation-state.md)
+
+</div>
+
+---
 
 Run:
 
@@ -73,3 +80,11 @@ The HUD stays fixed even while the camera follows the player.
 - Move the HUD to the top right.
 - Add a stamina bar.
 - Change the health bar color when health is low.
+
+---
+
+<div align="center">
+
+[← Previous: Sprite assets](11-sprite-assets.md) · [Index](index.md) · [Next: Animation state →](13-animation-state.md)
+
+</div>

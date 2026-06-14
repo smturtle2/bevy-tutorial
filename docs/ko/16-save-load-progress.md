@@ -1,6 +1,13 @@
 # 16. 진행도 저장과 불러오기
 
-[목차](index.md) | 이전: [게임 상태](15-game-states.md) | 다음: [완성 RPG 조각](17-complete-rpg-slice.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 게임 상태](15-game-states.md) · [다음: 완성 RPG 조각 →](17-complete-rpg-slice.md)
+
+</div>
+
+---
 
 실행:
 
@@ -62,3 +69,11 @@ fs::read_to_string(SAVE_PATH)
 - `Progress`에 `gold` 필드를 추가하세요.
 - `last_selected_character` 같은 문자열 필드를 저장해보세요.
 - F5가 아니라 게임오버 시점에 자동 저장하도록 바꿔보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 게임 상태](15-game-states.md) · [목차](index.md) · [다음: 완성 RPG 조각 →](17-complete-rpg-slice.md)
+
+</div>

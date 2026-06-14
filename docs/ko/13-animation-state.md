@@ -1,6 +1,13 @@
 # 13. 애니메이션 상태
 
-[목차](index.md) | 이전: [screen-space UI](12-screen-space-ui.md) | 다음: [직접 만든 맵 지오메트리](14-handmade-map-geometry.md)
+
+<div align="center">
+
+[목차](index.md) · [← 이전: 화면 고정 UI](12-screen-space-ui.md) · [다음: 직접 만든 맵 지오메트리 →](14-handmade-map-geometry.md)
+
+</div>
+
+---
 
 실행:
 
@@ -52,3 +59,11 @@ cargo run --example 13_animation_state
 - 공격 타이머를 더 길게 바꿔보세요.
 - 달리기 프레임을 하나 더 추가해보세요.
 - 왼쪽으로 움직일 때 sprite를 좌우 반전해보세요.
+
+---
+
+<div align="center">
+
+[← 이전: 화면 고정 UI](12-screen-space-ui.md) · [목차](index.md) · [다음: 직접 만든 맵 지오메트리 →](14-handmade-map-geometry.md)
+
+</div>

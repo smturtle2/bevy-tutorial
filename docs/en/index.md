@@ -1,10 +1,21 @@
 # Rust + Bevy Tutorial
 
-[Repository root](../../README.md) | [Korean](../ko/index.md)
+<div align="center">
+
+[Repository root](../../README.md) · [Korean](../ko/index.md)
+
+<code>Rust 2024</code> · <code>Bevy 0.18.1</code> · <code>18 runnable examples</code> · <code>English/한국어</code>
+
+</div>
+
+---
 
 This tutorial teaches Rust and Bevy as one track. You will build from a blank Bevy window to a small top-down RPG that includes camera follow, enemy waves, attack hitboxes, sprite assets, screen-space UI, animation state, handmade map geometry, game states, and save/load.
 
 ![RPG feature roadmap](../../assets/diagrams/rpg-feature-roadmap.png)
+
+> [!IMPORTANT]
+> This tutorial does not assume you already know Rust. Rust syntax is introduced in the order Bevy examples need it, and each chapter is tied to one runnable example.
 
 ## Learning Contract
 
@@ -13,10 +24,21 @@ By the end, you should be able to:
 - Read and write Bevy systems with `Commands`, `Res`, `ResMut`, `Query`, `Single`, `With`, and `Without`.
 - Design components as small data types and spawn stable gameplay entities through bundles.
 - Split frame behavior into explicit phases with `.chain()` and `SystemSet`.
-- Explain the Rust behind Bevy code: `struct`, tuple struct, `impl`, trait, derive, ownership, references, modules, visibility, `enum`, `Option`, and `Result`.
+- Explain the Rust behind Bevy code: function signatures, `struct`, tuple, tuple struct, `impl`, trait, derive, generic types, ownership, references, `Option`, `Result`, `match`, modules, and visibility.
 - Load image assets and sprite sheets through `AssetServer`.
 - Keep world-space gameplay, screen-space UI, and game state transitions separate.
 - Save and load explicit progress data without pretending the whole Bevy world is a save file.
+
+## Learning Path
+
+| Phase | Chapters | Output |
+|---|---:|---|
+| Setup | 0 | A Cargo/Bevy project that builds |
+| Rust + app basics | 1-2 | You can read Rust type syntax and Bevy app registration |
+| ECS fundamentals | 3-5 | Components, resources, queries, bundles, plugins, and system order |
+| Presentation | 6 | Assets, camera follow, and world text |
+| RPG foundation | 7 | A compact loop with movement, AI, collision, score, and HUD |
+| Required RPG systems | 8-17 | Camera smoothing, waves, attacks, UI, animation, map geometry, states, and save/load |
 
 ## Chapters
 
@@ -40,6 +62,9 @@ By the end, you should be able to:
 17. [Complete RPG slice](17-complete-rpg-slice.md)
 
 ## Run The Track
+
+> [!TIP]
+> Read one chapter, run its example, change a small rule, then move on. Do not only copy the final code. Bevy becomes easier when you keep asking: "what does this system read, and what does it write?"
 
 ```sh
 cargo run --example 01_empty_app
@@ -85,3 +110,11 @@ SystemSet = frame order
 State     = which systems are allowed to run
 Module    = source-code boundary
 ```
+
+---
+
+<div align="center">
+
+[Start: Project setup →](00-project-setup.md)
+
+</div>

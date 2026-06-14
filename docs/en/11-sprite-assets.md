@@ -1,6 +1,13 @@
 # 11. Sprite Assets
 
-[Index](index.md) | Previous: [Attack hitboxes](10-attack-hitbox.md) | Next: [Screen-space UI](12-screen-space-ui.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Attack hitboxes](10-attack-hitbox.md) · [Next: Screen-space UI →](12-screen-space-ui.md)
+
+</div>
+
+---
 
 Run:
 
@@ -49,3 +56,11 @@ The returned handle can be stored in a component immediately. Bevy may finish lo
 - Replace `enemy.png` with another asset.
 - Add a new `DisplaySpriteBundle` spawn.
 - Scale a sprite with `Transform::from_scale`.
+
+---
+
+<div align="center">
+
+[← Previous: Attack hitboxes](10-attack-hitbox.md) · [Index](index.md) · [Next: Screen-space UI →](12-screen-space-ui.md)
+
+</div>

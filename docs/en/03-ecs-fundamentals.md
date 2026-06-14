@@ -1,6 +1,13 @@
 # 3. ECS Fundamentals
 
-[Index](index.md) | Previous: [The Bevy app model](02-bevy-app-model.md) | Next: [Input and movement](04-input-and-movement.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: The Bevy app model](02-bevy-app-model.md) · [Next: Input and movement →](04-input-and-movement.md)
+
+</div>
+
+---
 
 ECS means Entity Component System.
 
@@ -252,3 +259,11 @@ For each system below, write down what it reads and writes before looking at the
 - Querying a marker as `&Player` when `With<Player>` would be enough.
 - Forgetting that `Commands` are deferred.
 - Writing one large system that reads input, moves entities, handles collision, updates score, and updates display all at once.
+
+---
+
+<div align="center">
+
+[← Previous: The Bevy app model](02-bevy-app-model.md) · [Index](index.md) · [Next: Input and movement →](04-input-and-movement.md)
+
+</div>

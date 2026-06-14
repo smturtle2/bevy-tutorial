@@ -1,6 +1,13 @@
 # 9. Enemy Waves
 
-[Index](index.md) | Previous: [Smooth camera follow](08-smooth-camera-follow.md) | Next: [Attack hitboxes](10-attack-hitbox.md)
+
+<div align="center">
+
+[Index](index.md) · [← Previous: Smooth camera follow](08-smooth-camera-follow.md) · [Next: Attack hitboxes →](10-attack-hitbox.md)
+
+</div>
+
+---
 
 Run:
 
@@ -70,3 +77,11 @@ Enemy expiry runs before spawning, then spawning happens before AI so newly spaw
 - Increase `remaining_to_spawn` per wave.
 - Add more `SPAWN_POINTS`.
 - Replace `EnemyLifetime` with real combat after finishing the hitbox chapter.
+
+---
+
+<div align="center">
+
+[← Previous: Smooth camera follow](08-smooth-camera-follow.md) · [Index](index.md) · [Next: Attack hitboxes →](10-attack-hitbox.md)
+
+</div>
