@@ -159,7 +159,7 @@ let Some(atlas) = &mut sprite.texture_atlas else {
 };
 ```
 
-모든 sprite가 texture atlas를 갖는 것은 아닙니다. 이 시스템은 atlas가 있는 스프라이트에만 애니메이션을 적용합니다. 없으면 바로 빠져나갑니다.
+이 시스템은 texture atlas가 있는 스프라이트에 애니메이션을 적용합니다. atlas가 없으면 바로 빠져나갑니다.
 
 enum은 `Copy`를 derive했기 때문에 상태 대입이 가볍습니다.
 

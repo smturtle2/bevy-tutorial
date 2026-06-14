@@ -141,7 +141,7 @@ commands.spawn((
 ));
 ```
 
-That tuple is not a class. It is a group of component values attached to one entity.
+That tuple is a group of component values attached to one entity.
 
 The color call uses associated functions:
 
@@ -155,7 +155,7 @@ Each one creates a value before Bevy stores it as component data.
 
 ## Bevy Lens
 
-`DefaultPlugins` gives you the engine pieces. Without it, you are not asking Bevy to create the normal window, renderer, input, asset loader, or logging setup.
+`DefaultPlugins` installs the normal window, renderer, input, asset loader, logging setup, and other engine pieces.
 
 `ClearColor` is a resource because there is one background clear color for the app:
 

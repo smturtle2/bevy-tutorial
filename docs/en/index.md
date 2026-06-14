@@ -10,9 +10,9 @@
 
 ---
 
-This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, then grows into movement, ECS data design, plugins, assets, camera follow, waves, hitboxes, UI, animation, map geometry, game states, save/load, projectiles, inventory, dialogue, audio events, and scene loading.
+This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, grows into a playable combat loop, then explores standalone expansion examples for projectiles, inventory, dialogue, audio events, and scene loading with explicit integration points.
 
-You are not reading a reference manual. You are building one working slice at a time, running it, changing one rule, and then learning the Rust and Bevy concepts that made that slice work.
+The learning loop is practical: build one working slice, run it, change one rule, then read the Rust and Bevy contracts that made that slice work.
 
 ![Integrated RPG tutorial preview](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
@@ -54,7 +54,20 @@ This tutorial uses its own code and its own RPG project, but it keeps the same p
 | RPG foundation | 7 | A compact playable arena with movement, enemies, pickups, health, score, and HUD |
 | RPG systems | 8-16 | Camera smoothing, waves, attacks, sprite assets, fixed HUD, animation, map collision, states, save/load |
 | Core integration | 17 | A playable RPG checkpoint using the combat-loop systems from the track |
-| RPG content systems | 18-22 | Projectiles, inventory, dialogue, audio events, and scene loading |
+| RPG expansion examples | 18-22 | Focused projectiles, inventory, dialogue, audio events, and scene loading with explicit integration points |
+
+## Track Structure
+
+The tutorial has three structural turns:
+
+```text
+0-6      Rust, App, ECS, bundles, plugins, assets, camera, UI
+7-16     individual RPG systems with focused examples
+17       integrated RPG checkpoint
+18-22    focused expansion examples with explicit integration points
+```
+
+From chapter 18 onward, each example stays runnable on its own and carries over only the contracts that feature uses: combat data for projectiles, score plus inventory data for pickups, state data for dialogue, typed messages for audio, and loaded components for scenes.
 
 ## Chapters
 

@@ -161,13 +161,21 @@ cleanup_entities::<GameOverUi>
 
 `cleanup_entities::<MenuUi>`는 제네릭 타입을 직접 지정하는 문법입니다. 이 시스템에서 `T`가 `MenuUi`라는 뜻입니다.
 
-상태 enum에 여러 derive가 붙는 데에도 이유가 있습니다.
+상태 enum에 여러 derive가 붙는 데에는 각각 이유가 있습니다.
 
 ```rust
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 ```
 
-Bevy는 상태 값을 저장하고, 비교하고, hash하고, clone하고, debug 출력할 수 있어야 합니다. derive는 장식이 아니라 trait 요구사항을 만족시키는 코드입니다.
+```text
+States      이 enum을 앱 상태로 등록할 수 있게 함
+Default     init_state::<GameState>()가 쓸 시작 상태를 정함
+PartialEq   run_if(in_state(...))에서 현재 상태와 비교할 수 있게 함
+Eq          상태 값을 정확한 식별값으로 비교할 수 있음을 보장함
+Hash        상태 값을 스케줄/맵의 키로 쓸 수 있게 함
+Clone/Copy   작은 상태 값을 싸게 전달할 수 있게 함
+Debug       진단 메시지에 상태 이름을 출력할 수 있게 함
+```
 
 ## Bevy로 보면
 

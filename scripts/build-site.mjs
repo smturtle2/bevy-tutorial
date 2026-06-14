@@ -32,11 +32,11 @@ const chapters = [
   chapter(15, "15-game-states", "Game States", "게임 상태", "RPG Features", "RPG 기능", "cargo run --example 15_game_states", "Model menu, playing, paused, and game over as Bevy states.", "메뉴, 플레이 중, 일시정지, 게임 오버를 Bevy 상태로 모델링합니다."),
   chapter(16, "16-save-load-progress", "Save And Load Progress", "진행도 저장과 불러오기", "RPG Features", "RPG 기능", "cargo run --example 16_save_load_progress", "Persist explicit progress data instead of serializing the whole world.", "전체 월드가 아니라 명시적인 진행 데이터를 저장합니다."),
   chapter(17, "17-complete-rpg-slice", "Integrated RPG Slice", "통합 RPG 예제", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the combat-loop systems together into a playable RPG checkpoint.", "전투 루프 시스템을 합쳐 플레이 가능한 RPG 체크포인트를 만듭니다."),
-  chapter(18, "18-projectiles", "Projectiles", "발사체", "RPG Content", "RPG 콘텐츠", "cargo run --example 18_projectiles", "Model ranged attacks as moving entities with damage, collision, and lifetime.", "원거리 공격을 피해량, 충돌, 수명을 가진 움직이는 엔티티로 모델링합니다."),
-  chapter(19, "19-inventory", "Inventory", "인벤토리", "RPG Content", "RPG 콘텐츠", "cargo run --example 19_inventory", "Collect world pickups into explicit inventory data and update the HUD.", "맵 위 아이템을 명시적인 인벤토리 데이터에 담고 HUD를 갱신합니다."),
-  chapter(20, "20-dialogue", "Dialogue", "대화", "RPG Content", "RPG 콘텐츠", "cargo run --example 20_dialogue", "Start NPC conversations, advance lines, and render dialogue UI.", "NPC와 대화를 시작하고 문장을 넘기며 대화 UI를 표시합니다."),
-  chapter(21, "21-audio-events", "Audio Events", "오디오 이벤트", "RPG Content", "RPG 콘텐츠", "cargo run --example 21_audio_events", "Decouple gameplay from sound playback with audio events.", "오디오 이벤트로 게임플레이와 소리 재생을 분리합니다."),
-  chapter(22, "22-scene-loading", "Scene Loading", "씬 로딩", "RPG Content", "RPG 콘텐츠", "cargo run --example 22_scene_loading", "Load level data from files and spawn scene-owned entities.", "파일에서 레벨 데이터를 읽어 씬 소유 엔티티를 생성합니다."),
+  chapter(18, "18-projectiles", "Projectiles", "발사체", "RPG Expansions", "RPG 확장", "cargo run --example 18_projectiles", "Extend the combat loop with ranged projectiles beside melee hitboxes.", "근접 히트박스 옆에 원거리 발사체를 추가합니다."),
+  chapter(19, "19-inventory", "Inventory", "인벤토리", "RPG Expansions", "RPG 확장", "cargo run --example 19_inventory", "Add inventory while keeping run score and pickup collision rules.", "점수와 수집 충돌 규칙을 유지하면서 인벤토리를 추가합니다."),
+  chapter(20, "20-dialogue", "Dialogue", "대화", "RPG Expansions", "RPG 확장", "cargo run --example 20_dialogue", "Add dialogue as an explicit game state with NPC-owned lines.", "NPC가 가진 대사와 명시적인 대화 상태를 추가합니다."),
+  chapter(21, "21-audio-events", "Audio Events", "오디오 이벤트", "RPG Expansions", "RPG 확장", "cargo run --example 21_audio_events", "Emit typed audio events from real attack, pickup, and hurt rules.", "공격, 수집, 피격 규칙에서 타입 있는 오디오 이벤트를 발생시킵니다."),
+  chapter(22, "22-scene-loading", "Scene Loading", "씬 로딩", "RPG Expansions", "RPG 확장", "cargo run --example 22_scene_loading", "Load scene files that spawn the same gameplay components.", "씬 파일을 읽어 기존 게임플레이 컴포넌트를 생성합니다."),
 ];
 
 const chapterThumbnails = {
@@ -79,7 +79,7 @@ const copy = {
     heroPoints: [
       "Rust basics are introduced exactly when Bevy code needs them.",
       "Every major RPG system has a chapter and a runnable example.",
-      "Architecture grows from systems to bundles, plugins, states, and saving.",
+      "Architecture grows from systems to bundles, plugins, states, saving, and expansion checkpoints.",
     ],
     learningPath: "Your learning path",
     learningPathNote: "Read in order or jump to the chapter that matches the system you are building.",
@@ -118,7 +118,7 @@ const copy = {
     heroPoints: [
       "Bevy 코드에 필요한 Rust 기초를 등장 순서에 맞춰 설명합니다.",
       "핵심 RPG 시스템마다 장과 실행 가능한 예제가 있습니다.",
-      "시스템에서 번들, 플러그인, 상태, 저장까지 구조를 단계적으로 키웁니다.",
+      "시스템에서 번들, 플러그인, 상태, 저장, 확장 체크포인트까지 구조를 단계적으로 키웁니다.",
     ],
     learningPath: "학습 경로",
     learningPathNote: "순서대로 읽어도 되고, 지금 만들고 싶은 시스템에 맞는 장으로 이동해도 됩니다.",

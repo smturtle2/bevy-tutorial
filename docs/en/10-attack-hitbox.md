@@ -100,7 +100,7 @@ commands.spawn((
 ));
 ```
 
-The short lifetime is important. A hitbox is not a permanent weapon object; it is the active damage window of one attack.
+The short lifetime is important. A hitbox represents the active damage window of one attack.
 
 ## Build Step 5: Apply Damage
 

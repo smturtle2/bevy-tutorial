@@ -6,6 +6,22 @@ const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const NPC_SIZE: Vec2 = Vec2::splat(42.0);
 const INTERACT_DISTANCE: f32 = 82.0;
 
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+    Dialogue,
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum GameSet {
+    Input,
+    Ui,
+}
+
+#[derive(Component)]
+struct GameplayEntity;
+
 #[derive(Component)]
 struct Player;
 
@@ -33,16 +49,22 @@ fn main() {
     app.insert_resource(ClearColor(Color::srgb(0.07, 0.08, 0.10)))
         .init_resource::<DialogueState>()
         .add_plugins(DefaultPlugins)
+        .init_state::<GameState>()
+        .configure_sets(Update, (GameSet::Input, GameSet::Ui).chain())
         .add_systems(Startup, setup)
         .add_systems(
             Update,
+            (move_player, dialogue_input).chain().in_set(GameSet::Input),
+        )
+        .add_systems(
+            Update,
             (
-                move_player,
+                start_capture_dialogue,
                 update_prompt_text,
-                dialogue_input,
                 update_dialogue_text,
             )
-                .chain(),
+                .chain()
+                .in_set(GameSet::Ui),
         );
 
     add_tutorial_screenshot(&mut app, "assets/screenshots/ch20-dialogue.png", 20);
@@ -53,6 +75,7 @@ fn setup(mut commands: Commands, mut dialogue: ResMut<DialogueState>) {
     commands.spawn(Camera2d);
 
     commands.spawn((
+        GameplayEntity,
         Player,
         Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
         Transform::from_xyz(-260.0, -40.0, 2.0),
@@ -80,6 +103,7 @@ fn setup(mut commands: Commands, mut dialogue: ResMut<DialogueState>) {
     ] {
         let entity = commands
             .spawn((
+                GameplayEntity,
                 Npc { name, lines },
                 Sprite::from_color(Color::srgb(0.95, 0.68, 0.30), NPC_SIZE),
                 Transform::from_translation(position),
@@ -124,13 +148,26 @@ fn setup(mut commands: Commands, mut dialogue: ResMut<DialogueState>) {
     }
 }
 
+fn start_capture_dialogue(
+    mut done: Local<bool>,
+    dialogue: Res<DialogueState>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if *done || !tutorial_capture_enabled() || dialogue.active_npc.is_none() {
+        return;
+    }
+
+    *done = true;
+    next_state.set(GameState::Dialogue);
+}
+
 fn move_player(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    dialogue: Res<DialogueState>,
+    state: Res<State<GameState>>,
     mut player: Single<&mut Transform, With<Player>>,
 ) {
-    if dialogue.active_npc.is_some() {
+    if *state.get() != GameState::Playing {
         return;
     }
 
@@ -156,11 +193,11 @@ fn move_player(
 fn update_prompt_text(
     player: Single<&Transform, With<Player>>,
     npcs: Query<(&Transform, &Npc)>,
-    dialogue: Res<DialogueState>,
+    state: Res<State<GameState>>,
     mut text: Single<&mut Text, With<PromptText>>,
 ) {
-    if dialogue.active_npc.is_some() {
-        text.0 = "Space: next line | Esc: close dialogue".to_string();
+    if *state.get() == GameState::Dialogue {
+        text.0 = "Dialogue state | Space: next line | Esc: close".to_string();
         return;
     }
 
@@ -173,8 +210,8 @@ fn update_prompt_text(
     });
 
     text.0 = match nearby {
-        Some((_, npc)) => format!("WASD move | E: talk to {}", npc.name),
-        None => "WASD move | stand near an NPC".to_string(),
+        Some((_, npc)) => format!("Playing state | WASD move | E: talk to {}", npc.name),
+        None => "Playing state | WASD move | stand near an NPC".to_string(),
     };
 }
 
@@ -183,18 +220,27 @@ fn dialogue_input(
     player: Single<&Transform, With<Player>>,
     npcs: Query<(Entity, &Transform, &Npc)>,
     mut dialogue: ResMut<DialogueState>,
+    state: Res<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         dialogue.active_npc = None;
         dialogue.line_index = 0;
+        next_state.set(GameState::Playing);
         return;
     }
 
-    if let Some(active_npc) = dialogue.active_npc {
+    if *state.get() == GameState::Dialogue {
         if keyboard.just_pressed(KeyCode::Space) {
+            let Some(active_npc) = dialogue.active_npc else {
+                next_state.set(GameState::Playing);
+                return;
+            };
+
             let Ok((_, _, npc)) = npcs.get(active_npc) else {
                 dialogue.active_npc = None;
                 dialogue.line_index = 0;
+                next_state.set(GameState::Playing);
                 return;
             };
 
@@ -203,6 +249,7 @@ fn dialogue_input(
             if dialogue.line_index >= npc.lines.len() {
                 dialogue.active_npc = None;
                 dialogue.line_index = 0;
+                next_state.set(GameState::Playing);
             }
         }
 
@@ -224,6 +271,7 @@ fn dialogue_input(
     if let Some((entity, _, _)) = nearest {
         dialogue.active_npc = Some(entity);
         dialogue.line_index = 0;
+        next_state.set(GameState::Dialogue);
     }
 }
 

@@ -199,7 +199,7 @@ App::new()
 struct Player;
 ```
 
-엔티티에 `Player`가 붙어 있으면 플레이어고, 없으면 플레이어가 아닙니다. 존재 자체가 데이터입니다.
+엔티티에 `Player`가 붙어 있으면 플레이어로 선택됩니다. 이 표식 컴포넌트는 존재 여부 자체가 데이터입니다.
 
 값 하나에 의미를 붙이고 싶을 때는 tuple struct가 좋습니다.
 
@@ -255,14 +255,93 @@ commands.spawn((
 
 ## Derive와 Trait
 
-Trait는 타입이 만족해야 하는 동작 규칙입니다. Bevy는 derive macro로 필요한 trait 구현을 많이 만들어 줍니다.
+Trait는 타입이 만족해야 하는 계약입니다. “이 타입은 이런 방식으로 쓸 수 있다”는 약속이라고 보면 됩니다. `derive` 매크로는 그 계약을 만족하는 구현을 컴파일할 때 대신 써 줍니다.
+
+층을 나누면 이렇습니다.
+
+```text
+trait      계약 이름
+impl       어떤 타입이 그 계약을 만족한다는 실제 구현
+derive     그 impl을 대신 생성해 주는 매크로
+```
+
+직접 구현하면 이런 모양입니다.
+
+```rust
+struct Score(u32);
+
+impl Default for Score {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+```
+
+구현이 기계적으로 정해지는 경우에는 `derive`로 컴파일러에게 맡길 수 있습니다.
+
+```rust
+#[derive(Default)]
+struct Score(u32);
+```
+
+Bevy의 derive도 같은 원리입니다. 다만 `Component`, `Resource`, `Bundle`, `States`, `SystemSet`, `Message` 같은 derive는 Bevy가 제공하는 절차적 매크로입니다. 이 매크로들은 컴파일 시점에 타입 모양을 보고 Bevy가 요구하는 trait 구현을 생성합니다.
+
+이 줄은 Bevy 계약 선언으로 읽습니다.
+
+```rust
+#[derive(Component)]
+struct Player;
+```
+
+뜻은 “`Player` 타입은 Bevy의 `Component` trait를 만족한다”입니다. 여기서 플레이어 엔티티가 생기지는 않습니다. 이 타입을 엔티티에 붙일 수 있게 되는 것뿐입니다. 실제로 붙이는 코드는 따로 있습니다.
+
+```rust
+commands.spawn((Player,));
+```
+
+리소스도 같은 구분으로 봅니다.
+
+```rust
+#[derive(Resource, Default)]
+struct Score(u32);
+```
+
+`Resource`는 `Score`를 Bevy 리소스로 저장할 수 있게 합니다. `Default`는 `Score::default()`를 만들 수 있게 합니다. 하지만 월드에 들어가는 시점은 앱이 리소스를 넣거나 초기화할 때입니다.
+
+```rust
+app.init_resource::<Score>();
+// 또는
+app.insert_resource(Score(0));
+```
+
+Bevy 코드를 읽을 때는 derive를 이렇게 해석합니다.
+
+| 타입을 이렇게 쓰고 싶다 | 필요한 derive | 그래도 런타임에 해야 하는 일 |
+|---|---|---|
+| 엔티티에 붙는 데이터 | `Component` | `commands.spawn`, `commands.entity(...).insert(...)`, 또는 번들 |
+| 월드에 하나만 있는 전역 데이터 | `Resource` | `insert_resource` 또는 `init_resource` |
+| 여러 컴포넌트를 묶은 생성 규격 | `Bundle` | `commands.spawn(MyBundle::new(...))` |
+| 메뉴/플레이/일시정지 같은 앱 상태 | `States`, 그리고 `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, `Default` | `app.init_state::<GameState>()`와 상태 전환 |
+| 시스템 실행 순서 라벨 | `SystemSet`, 그리고 `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash` | `.configure_sets(...)`와 `.in_set(...)` |
+| Bevy 메시지/이벤트 값 | `Message`, 보통 `Debug`, `Clone`, `Copy`도 함께 | `.add_message::<T>()`, `MessageWriter<T>`, `MessageReader<T>` |
+| JSON 저장/불러오기 데이터 | `Serialize`, `Deserialize` | `serde_json::to_string`, `serde_json::from_str` |
+| 디버그 출력 대상 | `Debug` | `println!("{value:?}")` 또는 Bevy 진단 출력 |
+| 대입으로 값이 싸게 복사됨 | `Copy`, 보통 `Clone`도 함께 | 모든 필드가 복사 가능한 타입이어야 함 |
+| 명시적으로 복제할 수 있음 | `Clone` | `.clone()` |
+| 비교하거나 해시 기반 자료구조/라벨에 쓸 수 있음 | `PartialEq`, `Eq`, `Hash` | `==`, `HashMap`, Bevy 상태/세트 라벨 |
+
+자주 보는 Bevy derive는 이런 형태입니다.
 
 ```rust
 #[derive(Component)]
 struct Player;
 
-#[derive(Resource, Default)]
-struct Score(u32);
+#[derive(Bundle)]
+struct PlayerBundle {
+    player: Player,
+    transform: Transform,
+    sprite: Sprite,
+}
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum GameSet {
@@ -271,7 +350,23 @@ enum GameSet {
 }
 ```
 
-`Component`는 이 타입을 엔티티에 붙일 수 있다는 뜻입니다. `Resource`는 월드에 하나 저장할 수 있다는 뜻입니다. `Default`는 기본값을 만들 수 있다는 뜻입니다.
+derive는 타입에 실제 역할이 있을 때만 붙입니다. 함수 안에서 잠깐 쓰는 보조 struct라면 derive가 필요 없을 수 있습니다. `Query`로 찾을 컴포넌트라면 `Component`가 필요합니다. 상태 enum이라면 Bevy가 그 값을 저장하고, 비교하고, 해시 계산하고, 복제하고, 디버그 출력할 수 있어야 하므로 여러 trait가 함께 필요합니다.
+
+컴파일러가 trait bound가 없다고 말하면 “이 타입이 필요한 계약을 아직 만족하지 않는다”는 뜻입니다. 그 trait가 정말 원하는 역할이면 derive합니다. 자동 생성된 기본 동작이 틀릴 수 있으면 직접 `impl`을 씁니다. `Default`가 대표적입니다. 비어 있거나 0인 값이 올바른 시작값이면 derive해도 됩니다. 시작값에 게임 규칙이 들어가면 직접 구현하는 편이 낫습니다.
+
+derive를 붙이기 전에 이렇게 판단합니다.
+
+```text
+Bevy가 이 타입을 엔티티에 저장하나?       Component
+Bevy가 이 타입을 전역 값으로 하나 저장하나? Resource
+이 타입이 컴포넌트 묶음 생성 규격인가?      Bundle
+상태나 스케줄 라벨로 쓰이나?               Bevy trait + Eq/Hash/Clone/Debug
+serde가 읽거나 쓸 데이터인가?              Serialize 또는 Deserialize
+로그나 테스트 비교만 필요하나?             Debug 또는 PartialEq
+아직 구체적인 필요가 없나?                 붙이지 않음
+```
+
+핵심 규칙은 이것입니다. `derive`는 Rust와 Bevy가 그 타입으로 무엇을 할 수 있는지 바꿉니다. 하지만 gameplay 로직을 직접 실행하지는 않습니다.
 
 ## `impl`과 `Self`
 

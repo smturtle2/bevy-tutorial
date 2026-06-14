@@ -161,13 +161,21 @@ cleanup_entities::<GameOverUi>
 
 `cleanup_entities::<MenuUi>` is explicit generic syntax. It tells Rust which component type `T` is for that system.
 
-The state enum derives several traits because Bevy must store, compare, hash, clone, and debug-print state values:
+The state enum derives several traits because each trait unlocks part of Bevy's state machinery:
 
 ```rust
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 ```
 
-Derives are not decoration. They satisfy concrete trait requirements.
+```text
+States      registers the enum as an app state
+Default     chooses the initial state used by init_state::<GameState>()
+PartialEq   lets Bevy compare the current state with run_if(in_state(...))
+Eq          makes equality exact enough for identity checks
+Hash        lets state values work as schedule/map keys
+Clone/Copy   keeps small state values cheap to pass
+Debug       gives diagnostics a printable state name
+```
 
 ## Bevy Lens
 

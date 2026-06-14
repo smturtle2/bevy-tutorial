@@ -5,6 +5,22 @@ const PLAYER_SPEED: f32 = 260.0;
 const PLAYER_SIZE: Vec2 = Vec2::splat(40.0);
 const ITEM_SIZE: Vec2 = Vec2::splat(28.0);
 
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum GameSet {
+    Input,
+    Collision,
+    Ui,
+}
+
+#[derive(Component)]
+struct GameplayEntity;
+
 #[derive(Component)]
 struct Player;
 
@@ -42,6 +58,14 @@ impl ItemKind {
             ItemKind::Potion => Color::srgb(0.95, 0.24, 0.42),
         }
     }
+
+    fn score_value(self) -> u32 {
+        match self {
+            ItemKind::Gem => 10,
+            ItemKind::Key => 50,
+            ItemKind::Potion => 0,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -69,31 +93,52 @@ impl Inventory {
     }
 }
 
+#[derive(Resource, Default)]
+struct RunStats {
+    score: u32,
+}
+
 #[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
+struct BodyBundle {
     body: Body,
     velocity: Velocity,
-    sprite: Sprite,
     transform: Transform,
+}
+
+impl BodyBundle {
+    fn new(position: Vec3, size: Vec2) -> Self {
+        Self {
+            body: Body {
+                half_size: size / 2.0,
+            },
+            velocity: Velocity(Vec2::ZERO),
+            transform: Transform::from_translation(position),
+        }
+    }
+}
+
+#[derive(Bundle)]
+struct PlayerBundle {
+    gameplay: GameplayEntity,
+    player: Player,
+    body: BodyBundle,
+    sprite: Sprite,
 }
 
 impl PlayerBundle {
     fn new() -> Self {
         Self {
+            gameplay: GameplayEntity,
             player: Player,
-            body: Body {
-                half_size: PLAYER_SIZE / 2.0,
-            },
-            velocity: Velocity(Vec2::ZERO),
+            body: BodyBundle::new(Vec3::new(-260.0, -80.0, 2.0), PLAYER_SIZE),
             sprite: Sprite::from_color(Color::srgb(0.25, 0.64, 1.0), PLAYER_SIZE),
-            transform: Transform::from_xyz(-260.0, -80.0, 2.0),
         }
     }
 }
 
 #[derive(Bundle)]
 struct ItemBundle {
+    gameplay: GameplayEntity,
     item: InventoryItem,
     body: Body,
     sprite: Sprite,
@@ -103,6 +148,7 @@ struct ItemBundle {
 impl ItemBundle {
     fn new(kind: ItemKind, position: Vec3) -> Self {
         Self {
+            gameplay: GameplayEntity,
             item: InventoryItem { kind },
             body: Body {
                 half_size: ITEM_SIZE / 2.0,
@@ -118,18 +164,38 @@ fn main() {
 
     app.insert_resource(ClearColor(Color::srgb(0.07, 0.08, 0.10)))
         .init_resource::<Inventory>()
+        .init_resource::<RunStats>()
         .add_plugins(DefaultPlugins)
+        .init_state::<GameState>()
+        .configure_sets(
+            Update,
+            (GameSet::Input, GameSet::Collision, GameSet::Ui).chain(),
+        )
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (move_player, collect_items, update_inventory_text).chain(),
+            move_player
+                .in_set(GameSet::Input)
+                .run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            collect_items
+                .in_set(GameSet::Collision)
+                .run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            update_inventory_text
+                .in_set(GameSet::Ui)
+                .run_if(in_state(GameState::Playing)),
         );
 
     add_tutorial_screenshot(&mut app, "assets/screenshots/ch19-inventory.png", 20);
     app.run();
 }
 
-fn setup(mut commands: Commands, mut inventory: ResMut<Inventory>) {
+fn setup(mut commands: Commands, mut inventory: ResMut<Inventory>, mut stats: ResMut<RunStats>) {
     commands.spawn(Camera2d);
     commands.spawn(PlayerBundle::new());
 
@@ -158,6 +224,7 @@ fn setup(mut commands: Commands, mut inventory: ResMut<Inventory>) {
     if tutorial_capture_enabled() {
         inventory.add(ItemKind::Gem);
         inventory.add(ItemKind::Potion);
+        stats.score = ItemKind::Gem.score_value() + ItemKind::Potion.score_value();
     }
 }
 
@@ -191,12 +258,14 @@ fn collect_items(
     player: Single<(&Transform, &Body), With<Player>>,
     items: Query<(Entity, &Transform, &Body, &InventoryItem)>,
     mut inventory: ResMut<Inventory>,
+    mut stats: ResMut<RunStats>,
 ) {
     let (player_transform, player_body) = *player;
 
     for (entity, item_transform, item_body, item) in &items {
         if overlaps(player_transform, player_body, item_transform, item_body) {
             inventory.add(item.kind);
+            stats.score += item.kind.score_value();
             commands.entity(entity).despawn();
         }
     }
@@ -204,6 +273,7 @@ fn collect_items(
 
 fn update_inventory_text(
     inventory: Res<Inventory>,
+    stats: Res<RunStats>,
     items: Query<(), With<InventoryItem>>,
     mut text: Single<&mut Text, With<InventoryText>>,
 ) {
@@ -213,7 +283,8 @@ fn update_inventory_text(
         .unwrap_or_else(|| "last pickup: none".to_string());
 
     text.0 = format!(
-        "WASD move and collect items\nGems: {} | Keys: {} | Potions: {}\n{} | remaining items: {}",
+        "WASD move and collect items\nScore: {} | Gems: {} | Keys: {} | Potions: {}\n{} | remaining items: {}",
+        stats.score,
         inventory.gems,
         inventory.keys,
         inventory.potions,

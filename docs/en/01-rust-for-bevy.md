@@ -255,14 +255,93 @@ The outer `spawn(...)` is the function call. The inner `(...)` is the tuple of c
 
 ## Derive And Traits
 
-Traits are behavior contracts. Bevy uses derive macros to implement common traits for your types:
+Traits are behavior contracts. A trait says, “this type can be used in this way.” A derive macro writes the obvious trait implementation for you at compile time.
+
+There are three layers:
+
+```text
+trait      the contract name
+impl       the code that satisfies the contract for one type
+derive     a macro that writes that impl for you
+```
+
+You can write an implementation yourself:
+
+```rust
+struct Score(u32);
+
+impl Default for Score {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+```
+
+When the implementation is mechanical, `derive` lets the compiler generate it:
+
+```rust
+#[derive(Default)]
+struct Score(u32);
+```
+
+Bevy's derives work the same way, but they come from Bevy's procedural macros. They inspect your type at compile time and generate the trait implementation Bevy needs.
+
+Read this line as a Bevy contract declaration:
+
+```rust
+#[derive(Component)]
+struct Player;
+```
+
+It means Rust will generate an implementation like “`Player` satisfies Bevy's `Component` trait.” It does not spawn a player. It only makes the type legal to attach to an entity. The actual attachment happens here:
+
+```rust
+commands.spawn((Player,));
+```
+
+The same distinction matters for resources:
+
+```rust
+#[derive(Resource, Default)]
+struct Score(u32);
+```
+
+`Resource` makes `Score` legal as a Bevy resource. `Default` makes `Score::default()` legal. The resource enters the world only when the app inserts or initializes it:
+
+```rust
+app.init_resource::<Score>();
+// or
+app.insert_resource(Score(0));
+```
+
+Use this derive contract when reading Bevy code:
+
+| You want the type to be... | Derive this | Runtime action still required |
+|---|---|---|
+| Data attached to an entity | `Component` | `commands.spawn`, `commands.entity(...).insert(...)`, or a bundle |
+| One global typed value in the world | `Resource` | `insert_resource` or `init_resource` |
+| A reusable group of components for spawning | `Bundle` | `commands.spawn(MyBundle::new(...))` |
+| An app state such as menu/playing/paused | `States`, plus `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, `Default` | `app.init_state::<GameState>()` and state transitions |
+| A system ordering label | `SystemSet`, plus `Debug`, `Clone`, `PartialEq`, `Eq`, `Hash` | `.configure_sets(...)` and `.in_set(...)` |
+| A Bevy message/event payload | `Message`, often with `Debug`, `Clone`, `Copy` | `.add_message::<T>()`, then `MessageWriter<T>` / `MessageReader<T>` |
+| JSON save/load data | `Serialize`, `Deserialize` | `serde_json::to_string` / `serde_json::from_str` |
+| Printable in debug output | `Debug` | `println!("{value:?}")` or Bevy diagnostics |
+| Cheaply duplicated by assignment | `Copy`, usually also `Clone` | the value must contain only copyable fields |
+| Duplicated explicitly | `Clone` | `.clone()` |
+| Comparable or usable in hashes | `PartialEq`, `Eq`, `Hash` | `==`, `HashMap`, Bevy state/set labels |
+
+Common Bevy derives look like this:
 
 ```rust
 #[derive(Component)]
 struct Player;
 
-#[derive(Resource, Default)]
-struct Score(u32);
+#[derive(Bundle)]
+struct PlayerBundle {
+    player: Player,
+    transform: Transform,
+    sprite: Sprite,
+}
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum GameSet {
@@ -271,7 +350,23 @@ enum GameSet {
 }
 ```
 
-`Component` means Bevy may attach the type to an entity. `Resource` means Bevy may store exactly one value of that type in the world. `Default` means Rust can create a standard initial value.
+Derive only when the type has a role that needs the trait. A local helper struct used inside one function needs no derive. A component that will be queried needs `Component`. A state enum needs the full state trait set because Bevy stores it, compares it, hashes it, clones it, and may print it in diagnostics.
+
+When the compiler says a trait bound is missing, read the message as a contract failure. If the trait is exactly the role you want, derive it. If the default generated behavior would be wrong, write a manual `impl` instead. `Default` is the usual example: derive it when empty or zero values are correct; implement it manually when the starting value has game meaning.
+
+Use this checklist before adding a derive:
+
+```text
+Is Bevy going to store this type on an entity?        derive Component
+Is Bevy going to store one global value of this type? derive Resource
+Is this type a spawn recipe made of components?       derive Bundle
+Is this type used as a state or schedule label?       derive the Bevy trait plus Eq/Hash/Clone/Debug
+Will serde read or write this type?                   derive Serialize and/or Deserialize
+Do I only want logs or assertions to work?            derive Debug or PartialEq
+Is there no concrete need yet?                        do not derive it yet
+```
+
+The important rule: `derive` changes what Rust and Bevy are allowed to do with a type. It does not run gameplay logic by itself.
 
 ## `impl` And `Self`
 

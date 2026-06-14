@@ -10,9 +10,9 @@
 
 ## 이 장에서 만들 것
 
-이 장이 끝나면 플레이어가 NPC에게 다가가 대화를 시작하고, 문장을 넘기고, 대화를 닫을 수 있습니다. 대화창은 화면 고정 UI로 나오고, NPC와 플레이어는 계속 ECS 엔티티로 남습니다.
+RPG 루프에 대화 모드를 추가합니다. NPC는 자기 이름과 대사를 가집니다. `DialogueState`는 현재 어떤 NPC와 몇 번째 줄을 보고 있는지 저장합니다. `GameState::Dialogue`에서는 일반 이동이 멈추고, 대화 입력이 줄 넘김과 닫기를 처리합니다.
 
-![NPC와 대화할 때 화면 아래 대화창이 열리는 장면](../../assets/screenshots/ch20-dialogue.png)
+![NPC와 대화하면 화면 아래 대화 패널이 열리는 장면](../../assets/screenshots/ch20-dialogue.png)
 
 ## 실행
 
@@ -20,11 +20,46 @@
 cargo run --example 20_dialogue
 ```
 
-WASD나 방향키로 NPC 근처로 갑니다. E로 말을 걸고, Space로 다음 문장을 보고, Esc로 닫습니다.
+조작:
 
-## 구현 흐름 1: 대사 데이터는 NPC에 두기
+```text
+WASD / 방향키   이동
+E               가까운 NPC와 대화
+Space           다음 대사
+Esc             대화 닫기
+```
 
-NPC는 자신의 정적인 대화 데이터를 가집니다.
+## 이어받는 계약
+
+대화는 앞에서 배운 상태 시스템으로 다룹니다.
+
+```text
+GameState::Playing    이동과 탐색
+GameState::Dialogue   대화 입력과 대화 UI
+DialogueState         현재 대화 중인 NPC와 줄 번호
+Npc 컴포넌트           화자 이름과 대사 데이터
+```
+
+모드는 `GameState`가 소유합니다. 대화 내용은 `Npc`가 소유합니다. 현재 진행 중인 대화는 `DialogueState`가 소유합니다.
+
+## 구현 흐름 1: 대화 상태 추가하기
+
+상태 enum에 두 모드를 둡니다.
+
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+    Dialogue,
+}
+```
+
+derive들은 Bevy 상태 계약을 만족시킵니다. `Default`는 시작 상태를 `Playing`으로 정합니다.
+
+## 구현 흐름 2: NPC에 대사 넣기
+
+NPC는 화자 데이터를 가집니다.
 
 ```rust
 #[derive(Component)]
@@ -34,23 +69,23 @@ struct Npc {
 }
 ```
 
-이 예제에서는 대사를 코드에 직접 적기 때문에 `'static` 문자열 슬라이스를 씁니다.
+이 예제의 대사는 Rust 코드 안에 직접 적혀 있으므로 문자열 리터럴을 빌려서 쓸 수 있습니다. 문자열 리터럴의 타입은 `&'static str`입니다. 프로그램이 실행되는 동안 계속 살아 있는 문자열 조각을 빌린다는 뜻입니다.
 
-```rust
-Npc {
-    name: "Mapper",
-    lines: &[
-        "A scene file can decide where I stand.",
-        "Code decides what talking to me means.",
-    ],
-}
+문자열 소유권은 이렇게 판단합니다.
+
+```text
+소스 코드에 직접 적은 고정 텍스트      &'static str
+어딘가에서 잠깐 빌린 텍스트           해당 lifetime을 가진 &str
+파일이나 네트워크에서 읽은 텍스트      String
+코드에 직접 적은 대사 배열            &'static [&'static str]
+씬 파일에서 읽은 대사                 Vec<String>
 ```
 
-파일에서 대사를 읽는 구조라면 `String`을 쓰는 편이 자연스럽습니다.
+22장은 JSON을 파싱해서 실행 중에 문자열을 만들기 때문에 `Vec<String>`을 씁니다.
 
-## 구현 흐름 2: 현재 대화 상태는 리소스에 두기
+## 구현 흐름 3: 현재 대화 저장하기
 
-현재 진행 중인 대화는 모드에 가까운 전역 상태입니다.
+현재 진행 중인 대화는 리소스로 둡니다.
 
 ```rust
 #[derive(Resource, Default)]
@@ -60,118 +95,87 @@ struct DialogueState {
 }
 ```
 
-이 값은 NPC 컴포넌트에 넣지 않습니다. NPC는 대사를 갖고, 대화 리소스는 “지금 누구와 몇 번째 줄을 보고 있는지”를 갖습니다.
+NPC는 대사를 소유하고, 리소스는 지금 어떤 대화가 열려 있는지 소유합니다.
 
-## 구현 흐름 3: 가까운 NPC 찾기
+## 구현 흐름 4: 상태로 이동 막기
 
-프롬프트 시스템은 플레이어 근처의 NPC를 찾습니다.
-
-```rust
-let nearby = npcs.iter().find(|(transform, _)| {
-    player
-        .translation
-        .truncate()
-        .distance(transform.translation.truncate())
-        <= INTERACT_DISTANCE
-});
-```
-
-가까운 NPC가 있으면 상호작용 문구를 보여줍니다. 없으면 NPC 근처로 가라는 문구를 보여줍니다.
-
-## 구현 흐름 4: 시작, 진행, 종료 처리하기
-
-입력 시스템은 세 갈래로 나뉩니다.
-
-```text
-대화 중 Esc       대화 닫기
-대화 중 Space     다음 문장으로 이동
-NPC 근처에서 E     대화 시작
-```
-
-활성 NPC는 `Entity`로 저장합니다.
+이동 시스템은 현재 상태를 읽습니다.
 
 ```rust
-dialogue.active_npc = Some(entity);
-dialogue.line_index = 0;
-```
-
-마지막 문장 다음으로 넘어가면 대화를 닫습니다.
-
-```rust
-if dialogue.line_index >= npc.lines.len() {
-    dialogue.active_npc = None;
-    dialogue.line_index = 0;
-}
-```
-
-## 구현 흐름 5: 대화 중 이동 막기
-
-이동 시스템은 `DialogueState`를 읽습니다.
-
-```rust
-if dialogue.active_npc.is_some() {
+if *state.get() != GameState::Playing {
     return;
 }
 ```
 
-이건 간단한 모드 제한입니다. 규모가 커지면 같은 감각으로 `GameState::Dialogue` 같은 Bevy 상태를 만들 수 있습니다.
+여러 시스템이 같은 앱 모드를 기준으로 판단할 수 있으므로, 임의의 boolean을 여기저기 두는 것보다 구조가 분명합니다.
 
-## 구현 흐름 6: 대화창 그리기
+## 구현 흐름 5: 시작, 넘김, 종료 규칙 만들기
 
-대화창도 일반적인 Bevy UI 엔티티입니다.
+입력 시스템이 상태 전환 규칙을 가집니다.
 
-```rust
-commands.spawn((
-    DialogueText,
-    Text::new(""),
-    Node {
-        position_type: PositionType::Absolute,
-        bottom: px(28),
-        left: px(32),
-        right: px(32),
-        padding: UiRect::all(px(14)),
-        ..default()
-    },
-    BackgroundColor(Color::srgba(0.06, 0.07, 0.10, 0.88)),
-));
+```text
+Playing에서 NPC 근처 E      active_npc = Some(entity), state = Dialogue
+Dialogue에서 Space          line_index += 1
+마지막 줄을 넘김             active_npc = None, state = Playing
+Esc                         active_npc = None, state = Playing
 ```
 
-업데이트 시스템은 화자와 문장을 씁니다.
+선택된 NPC는 `Entity` ID로 저장합니다.
 
 ```rust
-text.0 = format!("{}:\n{}", npc.name, line);
+dialogue.active_npc = Some(entity);
+dialogue.line_index = 0;
+next_state.set(GameState::Dialogue);
 ```
 
-## Rust로 보면
+## 구현 흐름 6: 대화 UI 그리기
 
-`Option<Entity>`는 현재 대화가 열려 있을 수도 있고 없을 수도 있다는 뜻입니다.
-
-```rust
-active_npc: Option<Entity>
-```
-
-대화가 없을 때는 `let else`로 일찍 빠져나갑니다.
+UI 시스템은 `DialogueState`와 활성 `Npc`를 읽습니다.
 
 ```rust
 let Some(entity) = dialogue.active_npc else {
     text.0.clear();
     return;
 };
+
+let Ok(npc) = npcs.get(entity) else {
+    text.0.clear();
+    return;
+};
 ```
 
-이렇게 쓰면 실제 대화가 있는 경우의 코드가 깊게 들여쓰기되지 않습니다.
+`let else`를 쓰면 활성 대화가 있는 경우를 들여쓰기 깊게 넣지 않고 바로 읽을 수 있습니다. 대화가 없으면 텍스트를 지우고 시스템을 끝냅니다.
 
-## Bevy로 보면
+## 통합 지점
 
-대화는 세 책임이 만나는 기능입니다.
+대화는 이동 코드 안에 직접 끼어드는 것이 아니라 상태로 RPG 루프에 연결됩니다.
 
 ```text
-NPC 컴포넌트       화자와 대사 데이터
-Dialogue 리소스    현재 대화 진행 상태
-UI 엔티티          화면에 보이는 대화창
+Input      E/Space/Esc가 대화 전환을 결정
+Movement   GameState::Playing일 때만 실행
+Ui         현재 상태에 맞게 안내 문구와 대화 패널 표시
+Scenes     로드된 NPC도 name + lines 데이터 모양을 사용
 ```
 
-현재 줄 번호를 모든 NPC 안에 넣지 않습니다. 동시에 진행되는 대화가 하나라면 리소스 하나가 더 정확한 소유자입니다.
+대화 중 전투도 멈추고 싶다면 전투 시스템에도 `in_state(GameState::Playing)`을 걸면 됩니다. 일시정지 메뉴가 대화보다 우선해야 한다면 그 규칙은 입력 상태 전환 시스템에서 정합니다.
+
+## Rust로 보면
+
+`Option<Entity>`는 “대화 없음”과 “이 NPC와 대화 중”을 나타냅니다.
+
+```rust
+active_npc: Option<Entity>
+```
+
+`Entity`는 참조가 아니라 ID입니다. 프레임을 넘어 오래 빌리는 대신 ID만 저장하고, 매 프레임 UI 시스템이 그 ID로 현재 NPC 데이터를 조회합니다.
+
+`&'static str`에는 lifetime 문법이 들어 있습니다.
+
+```rust
+name: &'static str
+```
+
+작은따옴표로 시작하는 이름은 빌림이 얼마나 오래 유효한지를 나타냅니다. `'static`은 프로그램 전체 동안 데이터가 살아 있다는 뜻입니다. 코드에 직접 적은 문자열 리터럴은 프로그램 바이너리 안에 들어가므로 여기서 `'static`을 씁니다.
 
 ## 확인
 
@@ -183,21 +187,21 @@ cargo run --example 20_dialogue
 
 확인 기준:
 
-- NPC 근처에 가면 프롬프트가 보입니다.
-- E를 누르면 대화창이 열립니다.
-- Space를 누르면 NPC의 다음 문장으로 넘어갑니다.
-- Esc를 누르면 대화창이 닫힙니다.
-- 대화 중에는 플레이어가 움직이지 않습니다.
+- NPC 근처에서 안내 문구가 나옵니다.
+- `E`를 누르면 대화 패널이 열리고 `GameState::Dialogue`로 들어갑니다.
+- `Space`를 누르면 NPC 대사가 다음 줄로 넘어갑니다.
+- `Esc`를 누르면 대화가 닫히고 `GameState::Playing`으로 돌아갑니다.
+- 대화 중에는 이동이 멈춥니다.
 
 ## 바꿔보기
 
-Mapper NPC의 대사에 한 줄을 추가합니다.
+Mapper NPC에 대사를 하나 더 추가합니다.
 
 ```rust
 "Dialogue data can grow without changing the UI system.",
 ```
 
-기대 결과: 그 NPC와 대화할 때 Space로 넘길 문장이 하나 더 생깁니다.
+기대 결과: 그 NPC와 대화할 때 `Space`로 한 줄을 더 넘길 수 있습니다.
 
 ---
 

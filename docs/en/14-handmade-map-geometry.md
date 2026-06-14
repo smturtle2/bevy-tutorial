@@ -108,7 +108,7 @@ for (position, size) in [
 }
 ```
 
-This is not a tilemap plugin. It is direct map geometry expressed as Rust data.
+This chapter expresses a small map directly as Rust geometry data.
 
 ## Build Step 4: Move First, Resolve Collision After
 

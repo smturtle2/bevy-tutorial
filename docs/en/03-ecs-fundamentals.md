@@ -24,7 +24,7 @@ Use the sprite example as the smallest ECS scene: one camera entity and one spri
 
 ## Build Step 1: Entity Means ID
 
-An entity is an ID in Bevy's world. It is not a class instance and it does not own methods.
+An entity is an ID in Bevy's world. Components attached to that ID carry data, and systems provide behavior.
 
 When you write:
 
@@ -180,7 +180,7 @@ Use `Single` for one player, one main camera, or one HUD text. Use `Query` when 
 
 ## Rust Lens
 
-The `for` loop is not Bevy magic:
+The loop is ordinary Rust iteration over query results:
 
 ```rust
 for (mut transform, velocity) in &mut bodies {
@@ -196,11 +196,11 @@ velocity.0
 score.0
 ```
 
-That `.0` is Rust tuple-field syntax, not Bevy syntax.
+That `.0` is Rust tuple-field syntax.
 
 ## Bevy Lens
 
-ECS is not “one object with all variables.” It is a set of typed data columns. Systems declare which columns they need, and Bevy runs compatible systems in an order that satisfies borrowing and scheduling rules.
+ECS stores typed data columns. Systems declare which columns they need, and Bevy runs compatible systems in an order that satisfies borrowing and scheduling rules.
 
 The practical design rule:
 

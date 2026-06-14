@@ -100,7 +100,7 @@ player.translation +=
     (direction.normalize_or_zero() * PLAYER_SPEED * time.delta_secs()).extend(0.0);
 ```
 
-The movement system does not care whether the player is drawn with a colored square or an image.
+The movement system depends on `Transform` and movement data, while drawing depends on the sprite components.
 
 ## Rust Lens
 

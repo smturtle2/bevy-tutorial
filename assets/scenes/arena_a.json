@@ -8,11 +8,19 @@
     { "x": 390.0, "y": 0.0, "w": 34.0, "h": 560.0 },
     { "x": -80.0, "y": 50.0, "w": 210.0, "h": 34.0 }
   ],
-  "gems": [
-    { "x": -120.0, "y": 140.0 },
-    { "x": 220.0, "y": -100.0 }
+  "items": [
+    { "kind": "Gem", "x": -120.0, "y": 140.0 },
+    { "kind": "Key", "x": 220.0, "y": -100.0 }
   ],
   "npcs": [
-    { "name": "Mapper", "x": 190.0, "y": 120.0 }
+    {
+      "name": "Mapper",
+      "x": 190.0,
+      "y": 120.0,
+      "lines": [
+        "This scene file placed me here.",
+        "The Rust systems still decide collision, pickup, and dialogue rules."
+      ]
+    }
   ]
 }

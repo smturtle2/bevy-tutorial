@@ -202,7 +202,7 @@ if keyboard.just_pressed(KeyCode::F5) {
 }
 ```
 
-This example does not serialize temporary enemies, hitboxes, or UI. It saves long-lived progress.
+The save file contains long-lived progress: best score and unlocked wave. Runtime enemies, hitboxes, and UI are rebuilt by gameplay systems.
 
 ## Rust Lens
 
@@ -219,7 +219,7 @@ Result               save/load IO
 borrowing            Res, ResMut, Query, Single
 ```
 
-The code is not “less Rust” because Bevy injects parameters. Bevy system signatures are Rust type contracts.
+Bevy calls systems by matching the parameter types in each signature. `Res`, `ResMut`, `Query`, `Single`, `Commands`, and `NextState` are the Rust type contract for what the system may read, write, spawn, despawn, or transition.
 
 ## Bevy Lens
 
@@ -236,6 +236,27 @@ queries apply behavior to matching entities
 ```
 
 This is the first full combat-loop architecture in the track. The systems from earlier chapters now run together inside one game loop.
+
+## Expansion Chapter Rules
+
+Chapters 18-22 are feature-focused expansion examples. Each file isolates one feature, keeps the data shapes and system phases that feature actually needs, and shows the integration point for the chapter 17 RPG slice.
+
+```text
+chapter 18   adds ranged projectiles beside the existing slash attack
+chapter 19   adds inventory while keeping run score
+chapter 20   adds dialogue as a real GameState
+chapter 21   emits audio from actual gameplay events
+chapter 22   loads scenes that spawn the same gameplay components
+```
+
+The shared rule is precise:
+
+```text
+carry over the same component shape when the feature touches that data
+carry over the same frame phase only when the example uses that phase
+show the system that would be inserted into the integrated loop
+keep the example runnable on its own so the new rule is visible
+```
 
 ## Check
 

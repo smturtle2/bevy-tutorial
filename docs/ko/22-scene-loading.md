@@ -10,9 +10,9 @@
 
 ## 이 장에서 만들 것
 
-이 장이 끝나면 게임이 JSON 파일에서 레벨 데이터를 읽습니다. 씬 파일은 플레이어 시작 위치, 벽, 보석, NPC를 정하고, Bevy 시스템은 그 데이터를 엔티티로 바꿉니다.
+레벨 배치를 Rust 코드 밖의 JSON 씬 파일로 옮깁니다. 씬에서 읽은 데이터는 이전 장에서 배운 같은 게임플레이 컴포넌트를 생성합니다. `Player`, `Wall`, `InventoryItem`, `Npc`, `Body`, `Transform`, 스프라이트가 그대로 쓰입니다.
 
-![두 개의 데이터 기반 아레나를 전환하는 씬 로딩 장면](../../assets/screenshots/ch22-scene-loading.png)
+![두 데이터 기반 아레나를 바꿔 로드하는 장면](../../assets/screenshots/ch22-scene-loading.png)
 
 ## 실행
 
@@ -20,24 +20,37 @@
 cargo run --example 22_scene_loading
 ```
 
-1 또는 2를 눌러 다른 씬 파일을 불러옵니다. WASD나 방향키로 움직입니다.
+조작:
 
-## 구현 흐름 1: 이 장에서 말하는 씬 정의하기
-
-이 장은 Bevy의 전체 reflection 기반 `DynamicScene` 포맷이 아니라, 튜토리얼용 레벨 데이터 포맷을 씁니다. 여기서 씬은 맵 데이터입니다.
-
-```rust
-#[derive(Deserialize)]
-struct SceneData {
-    name: String,
-    player_start: [f32; 2],
-    walls: Vec<RectData>,
-    gems: Vec<PointData>,
-    npcs: Vec<NpcData>,
-}
+```text
+1               Training Yard 로드
+2               Library Hall 로드
+WASD / 방향키   이동하고 로드된 아이템 수집
+E               로드된 NPC와 대화
+Space           다음 대사
+Esc             대화 닫기
 ```
 
-데이터 파일은 이런 모양입니다.
+## 이어받는 계약
+
+씬 로딩은 데이터를 읽어 엔티티를 생성하는 기능입니다.
+
+```text
+씬 파일           게임 오브젝트의 시작 위치를 설명
+serde struct      파일이 가져야 할 모양을 정의
+spawn_scene       씬 데이터를 Bevy 엔티티로 변환
+SceneEntity       씬 전환 전 제거할 로드 엔티티 표시
+GameplayEntity    확장 예제들이 공유하는 게임플레이 마커
+InventoryItem     로드된 수집물이 인벤토리 장의 컴포넌트를 사용
+Npc               로드된 NPC가 대화 장의 name + lines 모양을 사용
+DialogueState     현재 로드된 NPC와의 대화를 추적
+```
+
+씬 파일은 배치 데이터를 소유합니다. 이동, 충돌, 수집, 대화, UI, 정리 규칙은 여전히 Rust 시스템이 소유합니다.
+
+## 구현 흐름 1: 씬 파일 계약 정하기
+
+JSON 파일은 레벨 배치 데이터를 담습니다.
 
 ```json
 {
@@ -46,27 +59,60 @@ struct SceneData {
   "walls": [
     { "x": 0.0, "y": 260.0, "w": 760.0, "h": 34.0 }
   ],
-  "gems": [
-    { "x": -120.0, "y": 140.0 }
+  "items": [
+    { "kind": "Gem", "x": -120.0, "y": 140.0 }
   ],
   "npcs": [
-    { "name": "Mapper", "x": 190.0, "y": 120.0 }
+    {
+      "name": "Mapper",
+      "x": 190.0,
+      "y": 120.0,
+      "lines": ["This scene file placed me here."]
+    }
   ]
 }
 ```
 
-계약은 단순합니다. 씬 파일은 무엇이 어디서 시작하는지 설명합니다. 그것들이 어떻게 움직이고 충돌하고 수집되는지는 Rust 시스템이 정합니다.
+Rust 쪽 타입은 이 모양을 그대로 반영합니다.
 
-## 구현 흐름 2: 씬 소유 엔티티 표시하기
+```rust
+#[derive(Deserialize)]
+struct SceneData {
+    name: String,
+    player_start: [f32; 2],
+    walls: Vec<RectData>,
+    items: Vec<ItemData>,
+    npcs: Vec<NpcData>,
+}
+```
 
-씬 데이터에서 생성된 모든 엔티티에는 marker를 붙입니다.
+`Deserialize`는 serde가 JSON 텍스트에서 `SceneData` 값을 만들 수 있게 합니다.
+
+## 구현 흐름 2: 아이템 종류를 타입으로 파싱하기
+
+아이템 종류는 Rust enum 계약을 가집니다.
+
+```rust
+#[derive(Component, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum ItemKind {
+    Gem,
+    Key,
+    Potion,
+}
+```
+
+JSON의 `"Gem"`은 `ItemKind::Gem`이 됩니다. Rust에 `Coin` variant가 없는데 파일에 `"Coin"`이 들어오면 파싱이 실패합니다. 잘못된 게임 데이터가 조용히 만들어지는 것보다 낫습니다.
+
+## 구현 흐름 3: 로드된 엔티티 표시하기
+
+씬에서 만들어진 엔티티에는 모두 `SceneEntity`를 붙입니다.
 
 ```rust
 #[derive(Component)]
 struct SceneEntity;
 ```
 
-새 씬을 불러올 때 이전 씬 엔티티를 제거합니다.
+씬 전환은 이 마커를 사용합니다.
 
 ```rust
 for entity in &entities {
@@ -74,101 +120,103 @@ for entity in &entities {
 }
 ```
 
-이 규칙이 있어야 이전 벽, 보석, NPC가 새 씬에 남지 않습니다.
+이전 씬의 플레이어, 벽, 아이템, NPC를 제거한 뒤 다음 씬을 생성합니다.
 
-## 구현 흐름 3: 씬 파일 읽고 파싱하기
+## 구현 흐름 4: 파일 읽고 파싱하기
 
-로더는 `assets/scenes/...`에서 파일을 읽습니다.
+로딩은 세 단계입니다.
 
 ```rust
-let fs_path = format!("assets/{asset_path}");
-let text = match fs::read_to_string(&fs_path) {
-    Ok(text) => text,
-    Err(error) => return format!("Failed to read {asset_path}: {error}"),
-};
+let text = fs::read_to_string(&fs_path)?;
+let scene = serde_json::from_str::<SceneData>(&text)?;
+spawn_scene(commands, &scene);
+```
+
+예제에서는 UI에 오류 메시지를 보여주기 위해 `match`로 씁니다.
+
+```rust
 let scene = match serde_json::from_str::<SceneData>(&text) {
     Ok(scene) => scene,
     Err(error) => return format!("Failed to parse {asset_path}: {error}"),
 };
 ```
 
-예제는 실패해도 panic하지 않고 상태 메시지를 돌려줍니다. 이 메시지는 HUD에 표시되므로 로딩 실패를 화면에서 바로 볼 수 있습니다.
+## 구현 흐름 5: 기존 게임플레이 컴포넌트 생성하기
 
-## 구현 흐름 4: 데이터에서 엔티티 생성하기
-
-씬 데이터는 일반 ECS 엔티티로 변환됩니다.
+씬 로더는 앞 장에서 배운 개념을 그대로 재사용합니다. 아이템은 `InventoryItem` 엔티티가 됩니다.
 
 ```rust
-for wall in &scene.walls {
-    let size = Vec2::new(wall.w, wall.h);
-    commands.spawn((
-        SceneEntity,
-        Wall,
-        Body { half_size: size / 2.0 },
-        Sprite::from_color(Color::srgb(0.28, 0.33, 0.42), size),
-        Transform::from_xyz(wall.x, wall.y, 2.0),
-    ));
+commands.spawn((
+    GameplayEntity,
+    SceneEntity,
+    InventoryItem { kind: item.kind },
+    Body { half_size: ITEM_SIZE / 2.0 },
+    Sprite::from_color(item.kind.color(), ITEM_SIZE),
+    Transform::from_xyz(item.x, item.y, 3.0),
+));
+```
+
+NPC는 소유한 문자열을 가진 `Npc` 엔티티가 됩니다.
+
+```rust
+Npc {
+    name: npc.name.clone(),
+    lines: npc.lines.clone(),
 }
 ```
 
-플레이어, 보석, NPC도 같은 방식으로 생성합니다. 씬 로딩은 마법이 아니라 데이터 기반 생성입니다.
+이제 로드된 씬도 앞에서 배운 수집 데이터와 대화 데이터 모양을 그대로 사용합니다.
 
-## 구현 흐름 5: 런타임 규칙은 코드에 남기기
+## 구현 흐름 6: 기존 시스템이 로드 데이터를 쓰게 하기
 
-씬 파일에는 충돌 함수, 이동 코드, UI 시스템을 넣지 않습니다. 그런 규칙은 Rust에 남습니다.
-
-```rust
-fn move_player(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut player: Option<Single<&mut Transform, With<Player>>>,
-    walls: Query<(&Transform, &Body), (With<Wall>, Without<Player>)>,
-)
-```
-
-씬은 데이터를 바꿉니다. 시스템은 행동을 유지합니다.
-
-## 구현 흐름 6: 단축키로 씬 바꾸기
-
-단축키 시스템은 불러올 경로를 고릅니다.
+수집 시스템은 컴포넌트에 의존하므로, 코드에서 직접 만든 아이템과 JSON에서 로드한 아이템에 같은 규칙을 적용합니다.
 
 ```rust
-let next_path = if keyboard.just_pressed(KeyCode::Digit1) {
-    Some("scenes/arena_a.json")
-} else if keyboard.just_pressed(KeyCode::Digit2) {
-    Some("scenes/arena_b.json")
-} else {
-    None
-};
+if overlaps(player_transform, player_body, item_transform, item_body) {
+    inventory.add(item.kind);
+    stats.score += item.kind.score_value();
+    commands.entity(entity).despawn();
+}
 ```
 
-그 다음 이전 씬 엔티티를 지우고 새 파일을 읽습니다. 이것이 기본적인 방 전환 계약입니다.
+여러 장에서 같은 컴포넌트 계약을 유지했기 때문에 가능한 구조입니다.
+
+## 통합 지점
+
+씬 로딩은 데이터 파일과 게임플레이 시스템을 연결하며 확장 트랙을 마무리합니다.
+
+```text
+인벤토리     로드된 아이템은 InventoryItem 엔티티
+대화         로드된 NPC와 E로 대화를 열고 Space/Esc로 진행/닫기
+이동         로드된 벽은 Body 충돌 사용
+상태/리셋     씬 전환 시 SceneEntity 엔티티 제거
+UI           상태 텍스트와 대화 패널이 로드된 씬 데이터를 읽어 표시
+```
+
+전체 게임에서는 씬 파일과 저장 파일의 소유자가 다릅니다. 씬 파일은 레벨을 설명하고, 저장 파일은 플레이어의 지속 진행도를 설명합니다.
 
 ## Rust로 보면
 
-중첩 struct는 중첩 데이터를 그대로 닮습니다.
+`Vec<T>`는 해당 타입의 값이 몇 개든 들어올 수 있다는 뜻입니다.
 
 ```rust
-struct SceneData {
-    walls: Vec<RectData>,
-    gems: Vec<PointData>,
-    npcs: Vec<NpcData>,
+walls: Vec<RectData>,
+items: Vec<ItemData>,
+npcs: Vec<NpcData>,
+```
+
+`serde_json::from_str::<SceneData>(&text)`는 명시적 제네릭 문법입니다. serde에게 JSON 문자열을 정확히 `SceneData` 타입으로 파싱하라고 요청합니다.
+
+로드된 NPC에는 `String`이 들어갑니다.
+
+```rust
+struct Npc {
+    name: String,
+    lines: Vec<String>,
 }
 ```
 
-`Vec<T>`는 씬마다 개수가 달라도 된다는 뜻입니다. `serde_json::from_str::<SceneData>`는 JSON을 정확히 이 Rust 타입으로 파싱해 달라는 요청입니다.
-
-## Bevy로 보면
-
-씬 로딩은 세 종류의 데이터를 분리합니다.
-
-```text
-영구 진행도       저장되는 플레이어 진행 상황
-씬 데이터         벽, 보석, NPC 위치
-런타임 엔티티      실제 월드에 생성된 ECS 오브젝트
-```
-
-marker 컴포넌트는 씬 데이터와 정리 규칙을 연결합니다. 일단 올바른 컴포넌트만 붙어 있으면, 게임플레이 시스템은 그 엔티티가 코드에서 왔는지 JSON에서 왔는지 신경 쓰지 않습니다.
+20장에서 코드에 직접 적은 대화가 `&'static str`이었다면, 여기서는 파일에서 읽은 문자열을 실행 중에 소유해야 하므로 `String`을 씁니다.
 
 ## 확인
 
@@ -180,21 +228,23 @@ cargo run --example 22_scene_loading
 
 확인 기준:
 
-- 시작하면 씬 1이 로드됩니다.
-- 2를 누르면 다른 배치로 바뀝니다.
-- 이전 벽, 보석, NPC는 새 씬이 생성되기 전에 사라집니다.
-- 플레이어는 씬 파일의 시작 위치에서 시작합니다.
-- HUD는 로드된 씬 이름과 개수를 보여줍니다.
+- 시작하면 1번 씬이 로드됩니다.
+- `2`를 누르면 1번 씬 엔티티가 제거되고 2번 씬 엔티티가 생성됩니다.
+- 벽이 이동을 막습니다.
+- 로드된 아이템을 수집하면 인벤토리와 점수가 바뀝니다.
+- 로드된 NPC 근처에서 `E`를 누르면 대화 패널이 열립니다.
+- `Space`로 로드된 NPC 대사를 넘기고 `Esc`로 닫을 수 있습니다.
+- `1`을 누르면 다시 첫 씬으로 돌아갑니다.
 
 ## 바꿔보기
 
-`assets/scenes/arena_a.json`을 열고 보석을 하나 추가합니다.
+`assets/scenes/arena_a.json`에 아이템을 하나 더 추가합니다.
 
 ```json
-{ "x": 40.0, "y": 210.0 }
+{ "kind": "Potion", "x": 80.0, "y": -170.0 }
 ```
 
-기대 결과: Rust 코드를 바꾸지 않아도 예제를 다시 실행하면 보석이 하나 더 보입니다.
+기대 결과: Rust 코드를 바꾸지 않아도 예제를 다시 실행하면 새 포션이 보입니다.
 
 ---
 

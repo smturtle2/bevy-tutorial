@@ -127,7 +127,7 @@ hud.translation.y = player.translation.y + 230.0;
 fn new(asset_server: &AssetServer) -> Self
 ```
 
-Bundle이 애셋 서버를 소유하는 것이 아닙니다. 잠깐 빌려서 핸들을 요청할 뿐입니다.
+Bundle은 애셋 서버를 잠깐 빌려 핸들을 요청합니다.
 
 `format!`은 `String`을 만듭니다.
 

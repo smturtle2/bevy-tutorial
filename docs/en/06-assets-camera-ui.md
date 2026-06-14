@@ -127,7 +127,7 @@ This constructor borrows `AssetServer`:
 fn new(asset_server: &AssetServer) -> Self
 ```
 
-The bundle does not own the asset server. It only uses it to request a handle.
+The bundle borrows the asset server long enough to request a handle.
 
 `format!` creates a `String`:
 

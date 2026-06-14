@@ -10,7 +10,7 @@
 
 ## 이 장에서 만들 것
 
-이 장이 끝나면 플레이어가 움직이는 발사체를 쏠 수 있습니다. 발사체는 자기 위치, 속도, 충돌 범위, 피해량, 수명을 가진 엔티티입니다. 적에게 맞으면 피해를 주고, 빗나가면 시간이 지나 사라집니다.
+17장의 전투 루프에 원거리 공격을 추가합니다. `Space`는 그대로 근접 베기 공격이고, `F`를 누르면 플레이어가 바라보는 방향으로 발사체를 쏩니다. 두 공격은 같은 체력 모델, 충돌 크기 모델, 게임플레이 정리 마커, 시스템 순서 계약을 사용합니다.
 
 ![플레이어가 적을 향해 발사체를 쏘는 장면](../../assets/screenshots/ch18-projectiles.png)
 
@@ -20,11 +20,38 @@
 cargo run --example 18_projectiles
 ```
 
-WASD나 방향키로 움직입니다. Space를 누르면 마지막으로 바라본 방향으로 발사체를 쏩니다.
+조작:
 
-## 구현 흐름 1: 발사체를 엔티티로 보기
+```text
+WASD / 방향키   이동
+Space           근접 베기
+F               발사체 발사
+```
 
-발사체는 플레이어의 상태 플래그가 아닙니다. 짧게 살아 있는 별도 엔티티입니다.
+## 이 장의 기준
+
+이 예제는 발사체 규칙만 분리해서 보여줍니다. 그 규칙이 실제로 만지는 기준만 유지합니다.
+
+```text
+GameState::Playing      게임플레이 시스템 실행 조건
+GameSet                 Input -> Movement -> Collision -> Ui
+GameplayEntity          생성된 게임플레이 엔티티 표시
+Body                    충돌 크기
+Velocity                이동 벡터
+Facing                  마지막으로 움직인 방향
+Health { current, max } 적 체력 데이터 모양
+Space 베기              근접 공격으로 유지
+```
+
+새로 추가되는 전투 오브젝트는 이것입니다.
+
+```text
+Projectile entity = GameplayEntity + Projectile + Body + Velocity + Transform + Sprite
+```
+
+## 구현 흐름 1: 발사체 컴포넌트 추가하기
+
+발사체는 스프라이트만 있는 물체가 아니라 게임 규칙을 가진 엔티티입니다.
 
 ```rust
 #[derive(Component)]
@@ -34,55 +61,35 @@ struct Projectile {
 }
 ```
 
-이 엔티티에는 `Body`, `Velocity`, `Transform`, `Sprite`도 함께 붙습니다. 그러면 플레이어와 적이 쓰던 이동, 충돌, 표시 규칙을 그대로 쓸 수 있습니다.
+`lifetime`은 빗나간 발사체를 정리하기 위한 시간입니다. `damage`는 근접 공격과 같은 방식으로 적 체력을 깎기 위한 값입니다.
 
-```text
-Projectile entity = Projectile + Body + Velocity + Transform + Sprite
-```
+## 구현 흐름 2: 근접 공격과 원거리 공격 입력 분리하기
 
-RPG 오브젝트를 볼 때 기준은 간단합니다. 자기 위치와 자기 수명이 있으면 엔티티로 다룹니다.
-
-## 구현 흐름 2: 플레이어 위치와 방향에서 생성하기
-
-플레이어는 마지막으로 바라본 방향을 저장합니다.
+통합 예제에서 `Space`는 이미 베기 히트박스 입력입니다. 그래서 발사체는 `F`에 둡니다.
 
 ```rust
-#[derive(Component)]
-struct Facing(Vec2);
-```
+if !keyboard.just_pressed(KeyCode::KeyF) {
+    return;
+}
 
-Space를 누르면 발사 시스템이 플레이어의 `Transform`과 `Facing`을 읽습니다.
-
-```rust
 let (transform, facing) = *player;
 let start = transform.translation + (facing.0 * 34.0).extend(1.0);
 
 commands.spawn(ProjectileBundle::new(start, facing.0));
 ```
 
-`34.0`은 발사체가 플레이어 몸 안이 아니라 앞쪽에서 시작하게 하는 거리입니다. `extend(1.0)`은 2D 방향 오프셋을 `Vec3`로 바꾸고, 발사체를 플레이어보다 위 레이어에 둡니다.
+발사 시스템은 플레이어 위치와 `Facing`을 읽고, 시작 데이터가 들어간 새 엔티티를 만듭니다. 이동은 이동 시스템의 책임입니다.
 
-## 구현 흐름 3: 발사체에 속도와 회전 주기
+## 구현 흐름 3: 이동 규칙을 번들에 넣기
 
-Bundle 생성자는 방향을 이동 속도로 바꿉니다.
+발사체 번들은 방향을 속도와 회전으로 바꿉니다.
 
 ```rust
 velocity: Velocity(direction * PROJECTILE_SPEED),
+rotation: Quat::from_rotation_z(direction.y.atan2(direction.x)),
 ```
 
-그리고 스프라이트도 진행 방향으로 돌립니다.
-
-```rust
-let angle = direction.y.atan2(direction.x);
-
-Transform {
-    translation: position,
-    rotation: Quat::from_rotation_z(angle),
-    ..default()
-}
-```
-
-이제 발사체는 공용 이동 시스템을 그대로 사용할 수 있습니다.
+그래서 발사체는 공용 이동 시스템을 그대로 씁니다.
 
 ```rust
 fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
@@ -92,9 +99,9 @@ fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), W
 }
 ```
 
-## 구현 흐름 4: 빗나간 발사체 제거하기
+## 구현 흐름 4: 빗나간 발사체 정리하기
 
-아무것도 맞히지 못한 발사체도 정리 규칙이 필요합니다.
+아무것도 맞히지 못한 발사체도 정리 규칙이 있어야 합니다.
 
 ```rust
 fn tick_projectile_lifetime(
@@ -112,71 +119,70 @@ fn tick_projectile_lifetime(
 }
 ```
 
-이 시스템이 없으면 빗나간 발사체가 월드에 계속 쌓입니다.
+발사체 수명 관리는 발사체 기능의 책임입니다. 플레이어 입력이나 적 로직 안에 숨기지 않습니다.
 
-## 구현 흐름 5: 충돌하면 피해 주기
+## 구현 흐름 5: 같은 체력 계약 재사용하기
 
-충돌 시스템은 모든 발사체와 모든 적을 비교합니다.
+발사체 충돌은 통합 예제의 `Health { current, max }` 구조를 그대로 수정합니다.
 
 ```rust
 if overlaps(projectile_transform, projectile_body, enemy_transform, enemy_body) {
-    health.0 -= projectile.damage;
+    health.current -= projectile.damage;
     commands.entity(projectile_entity).despawn();
-    stats.hits += 1;
 
-    if health.0 <= 0 {
+    if health.current <= 0 {
         commands.entity(enemy_entity).despawn();
     }
 }
 ```
 
-이 예제의 발사체는 적을 맞히면 바로 사라집니다. 관통 화살을 만들고 싶다면 이 규칙을 바꾸면 됩니다.
+이 예제의 발사체는 한 번 맞히면 사라집니다. 관통 발사체를 만들고 싶다면 이 규칙을 바꾸면 됩니다.
 
-## 구현 흐름 6: 시스템 순서 고정하기
+## 통합 지점
 
-발사체 기능에는 프레임 순서가 필요합니다.
+이 기능은 17장의 전투 루프에서 필요한 단계만 사용합니다.
 
 ```text
-Input      발사체 생성
-Movement   발사체 이동과 수명 타이머 진행
-Collision  발사체 명중 처리
-Ui         숫자 표시
+Input       F 입력을 읽고 ProjectileBundle 생성
+Movement    발사체 이동과 수명 타이머 진행
+Collision   발사체와 적 Body를 비교하고 Health 감소
+Ui          발사 수, 명중 수, 활성 발사체, 적 체력 표시
 ```
 
-충돌이 이동보다 먼저 실행되면 발사체가 지난 프레임 위치로 판정됩니다. 수명 정리가 없으면 발사체가 계속 남습니다. 순서도 기능의 일부입니다.
+순서는 기능의 일부입니다. 이동 뒤에 충돌해야 현재 프레임 위치로 판정하고, 수명 정리가 있어야 빗나간 발사체가 쌓이지 않습니다.
 
 ## Rust로 보면
 
-이 장은 단일 값 컴포넌트에 tuple struct를 씁니다.
+`Projectile`은 두 정보를 가지므로 이름 있는 필드 struct가 맞습니다.
 
 ```rust
-struct Velocity(Vec2);
-struct Health(i32);
+struct Projectile {
+    lifetime: Timer,
+    damage: i32,
+}
 ```
 
-`velocity.0`, `health.0`처럼 내부 값을 꺼냅니다. 값은 하나뿐이고 타입 이름이 의미를 충분히 설명할 때 tuple struct가 깔끔합니다.
+`Velocity(Vec2)`와 `Facing(Vec2)`은 값 하나를 감싸는 tuple struct입니다. 타입 이름이 의미를 설명하므로 필드 이름을 따로 만들 필요가 적습니다.
 
-방향 계산에는 `normalize_or_zero`를 씁니다.
+상태와 세트의 derive는 각각 역할이 있습니다.
+
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+}
+```
+
+`States`는 이 enum을 Bevy 앱 상태로 저장할 수 있게 합니다. `Default`는 시작 상태를 정합니다. `Eq`와 `Hash`는 상태 값을 식별값으로 쓰게 합니다. `Clone`과 `Copy`는 작은 상태 값을 싸게 전달하게 합니다. `Debug`는 진단 메시지에 상태 이름을 출력할 수 있게 합니다.
+
+이동 계산에는 `normalize_or_zero`를 씁니다.
 
 ```rust
 let normalized = direction.normalize_or_zero();
 ```
 
-0 벡터를 정규화하면 수학적으로 문제가 생깁니다. `normalize_or_zero`는 0 벡터일 때 `Vec2::ZERO`를 돌려주므로 이동과 발사 코드가 단순해집니다.
-
-## Bevy로 보면
-
-발사체는 ECS에 잘 맞는 오브젝트입니다.
-
-```text
-어디에 있는가     Transform
-어떻게 움직이는가  Velocity
-무엇과 부딪히는가  Body
-무슨 효과가 있는가 Projectile { damage, lifetime }
-어떻게 보이는가    Sprite
-```
-
-발사 시스템은 생성만 합니다. 이동과 충돌은 다른 시스템이 처리합니다. 그래서 발사체를 추가해도 플레이어 이동 코드를 다시 짤 필요가 없습니다.
+0 벡터를 정규화하면 `NaN` 같은 잘못된 숫자 방향이 나올 수 있습니다. `normalize_or_zero`는 입력이 0일 때 결과도 0으로 정해서 이동과 발사 코드가 예측 가능하게 동작합니다.
 
 ## 확인
 
@@ -188,11 +194,12 @@ cargo run --example 18_projectiles
 
 확인 기준:
 
-- Space를 누르면 플레이어가 바라보는 방향으로 발사체가 나갑니다.
+- `Space`를 누르면 짧은 근접 히트박스가 생깁니다.
+- `F`를 누르면 플레이어가 바라보는 방향으로 발사체가 나갑니다.
 - 발사체는 플레이어와 독립적으로 움직입니다.
-- 적은 충분히 맞으면 사라집니다.
-- 빗나간 발사체는 잠시 뒤 사라집니다.
-- UI의 발사 수와 명중 수가 바뀝니다.
+- 근접 공격과 발사체 모두 적 체력을 줄입니다.
+- 빗나간 발사체는 수명이 끝나면 사라집니다.
+- UI가 발사 수, 발사체 명중 수, 베기 수, 근접 명중 수, 활성 발사체, 적 체력을 보여줍니다.
 
 ## 바꿔보기
 

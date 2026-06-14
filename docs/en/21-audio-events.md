@@ -10,7 +10,7 @@
 
 ## Outcome
 
-At the end of this chapter, gameplay systems emit audio events and one audio system turns those events into sound. Attacks, pickups, and hurt feedback produce different short sounds.
+This chapter adds audio without letting gameplay systems know how sound is played. Attack, pickup, and hurt systems emit typed messages. One audio system reads those messages and spawns short-lived audio players.
 
 ![Audio event counters show attack, pickup, and hurt sounds.](../../assets/screenshots/ch21-audio-events.png)
 
@@ -20,11 +20,31 @@ At the end of this chapter, gameplay systems emit audio events and one audio sys
 cargo run --example 21_audio_events
 ```
 
-Move with WASD or arrow keys. Press Space for an attack sound, collect gems for pickup sounds, and press H for a hurt sound.
+Controls:
 
-## Build Step 1: Define Audio As Gameplay Events
+```text
+WASD / Arrow keys   move
+Space               attack
+touch gems          pickup event
+touch enemy         hurt event
+```
 
-The example starts with an enum:
+## Continuity Contract
+
+Audio connects to actual gameplay events:
+
+```text
+attack input       spawns AttackHitbox and emits GameAudioEvent::Attack
+gem collection     despawns Gem and emits GameAudioEvent::Pickup
+enemy contact      damages player and emits GameAudioEvent::Hurt
+audio system       reads events and spawns AudioPlayer entities
+```
+
+The collision and combat systems publish what happened. The audio system owns frequencies, audio handles, and playback settings.
+
+## Build Step 1: Define Audio As A Message Type
+
+The event payload is a small enum:
 
 ```rust
 #[derive(Message, Debug, Clone, Copy)]
@@ -35,36 +55,50 @@ enum GameAudioEvent {
 }
 ```
 
-Register it:
+The derives have direct jobs:
+
+```text
+Message      Bevy can send this type through the message/event system
+Debug        values can be printed during debugging
+Clone/Copy   tiny event values can be duplicated cheaply
+```
+
+The app registers the message type:
 
 ```rust
 .add_message::<GameAudioEvent>()
 ```
 
-Gameplay systems should not decide exact frequencies, files, or playback settings. They should say what happened.
+That registration creates the channel used by `MessageWriter<GameAudioEvent>` and `MessageReader<GameAudioEvent>`.
 
-## Build Step 2: Emit Events From Gameplay Systems
+## Build Step 2: Emit Events From Gameplay Rules
 
-The attack input system emits an attack sound request:
+The attack input system emits `Attack` when it creates the hitbox:
 
 ```rust
-if keyboard.just_pressed(KeyCode::Space) {
-    audio_events.write(GameAudioEvent::Attack);
+commands.spawn((AttackHitbox { ... }, ...));
+audio_events.write(GameAudioEvent::Attack);
+```
+
+The pickup system emits `Pickup` only when a gem is actually collected:
+
+```rust
+if overlaps(player_transform, player_body, gem_transform, gem_body) {
+    commands.entity(entity).despawn();
+    audio_events.write(GameAudioEvent::Pickup);
 }
 ```
 
-The pickup system emits a pickup request when a gem is collected:
+The hurt system emits `Hurt` only when enemy contact damages the player:
 
 ```rust
-commands.entity(entity).despawn();
-audio_events.write(GameAudioEvent::Pickup);
+health.current = (health.current - 1).max(0);
+audio_events.write(GameAudioEvent::Hurt);
 ```
-
-This keeps the pickup rule separate from audio playback.
 
 ## Build Step 3: Read Events In One Audio System
 
-The audio system reads every event from this frame:
+One system converts gameplay events into sound:
 
 ```rust
 for event in events.read() {
@@ -73,27 +107,29 @@ for event in events.read() {
         GameAudioEvent::Pickup => 720.0,
         GameAudioEvent::Hurt => 180.0,
     };
+
+    commands.spawn((
+        AudioPlayer(pitch_assets.add(Pitch::new(frequency, Duration::from_millis(120)))),
+        PlaybackSettings::DESPAWN,
+    ));
 }
 ```
 
-One `match` maps gameplay meaning to sound choice.
+The `match` is exhaustive. If you add `GameAudioEvent::MenuSelect`, Rust requires the audio system to choose what that event sounds like.
 
-## Build Step 4: Spawn One-Shot Audio Entities
+## Build Step 4: Keep Playback Entities Short-Lived
 
-Bevy audio playback is component-based:
+The spawned audio entity uses:
 
 ```rust
-commands.spawn((
-    AudioPlayer(pitch_assets.add(Pitch::new(frequency, Duration::from_millis(120)))),
-    PlaybackSettings::DESPAWN,
-));
+PlaybackSettings::DESPAWN
 ```
 
-`PlaybackSettings::DESPAWN` removes the audio entity after playback. This is the correct cleanup rule for short SFX.
+That tells Bevy to remove the audio entity after playback. Gameplay systems should not track one-shot sound lifetimes.
 
-## Build Step 5: Keep Counts For Debugging
+## Build Step 5: Make Audio Visible
 
-The example also tracks how often each event played:
+The example also updates `AudioStats`:
 
 ```rust
 #[derive(Resource, Default)]
@@ -104,25 +140,25 @@ struct AudioStats {
 }
 ```
 
-This is not required for audio itself. It makes the behavior visible even when sound output is unavailable or muted.
+The counters are a teaching aid. They prove that audio events came from real gameplay rules even if the machine is muted.
 
-## Build Step 6: Define The Audio Contract
+## Integration Points
 
-This chapter uses a clear audio contract:
+The audio feature should attach to gameplay facts, not input keys:
 
 ```text
-gameplay systems emit GameAudioEvent
-play_audio_events is the only system that spawns audio
-short SFX use PlaybackSettings::DESPAWN
-multiple events in one frame are all played
-BGM would be a separate long-lived audio entity
+attack system       writes Attack
+pickup system       writes Pickup
+damage system       writes Hurt
+audio system        reads all GameAudioEvent values
+UI/debug system     may read AudioStats for visibility
 ```
 
-The same structure works with file assets. Replace `Pitch::new(...)` with `AudioPlayer::new(asset_server.load("sounds/hit.ogg"))` or store sound handles in a resource.
+For file-based sounds, replace `Pitch::new(...)` with handles from `AssetServer`, for example `asset_server.load("sounds/hit.ogg")`. The event contract stays the same.
 
 ## Rust Lens
 
-`enum` is the right type when there is a closed set of sound meanings:
+An enum is a closed vocabulary:
 
 ```rust
 enum GameAudioEvent {
@@ -132,19 +168,16 @@ enum GameAudioEvent {
 }
 ```
 
-The `match` expression is exhaustive. If you add `GameAudioEvent::MenuSelect`, Rust will require the audio system to choose a sound for it.
+This is stronger than sending strings like `"attack"`. Misspelling a variant is a compile error. Adding a variant forces every exhaustive `match` to be updated.
 
-## Bevy Lens
+Messages are also typed:
 
-Messages decouple gameplay from presentation:
-
-```text
-attack system    writes GameAudioEvent::Attack
-pickup system    writes GameAudioEvent::Pickup
-audio system     reads events and spawns AudioPlayer entities
+```rust
+MessageWriter<GameAudioEvent>
+MessageReader<GameAudioEvent>
 ```
 
-This is the same design idea as hitboxes and UI updates: gameplay writes facts, presentation systems react to those facts.
+Those system parameters say exactly which event stream the system writes or reads.
 
 ## Check
 
@@ -156,11 +189,11 @@ cargo run --example 21_audio_events
 
 Expected result:
 
-- Space produces an attack sound and increments the attack count.
-- Picking up a gem produces a pickup sound and increments the pickup count.
-- H produces a hurt sound and increments the hurt count.
-- No sound plays when no event is emitted.
-- Sound entities do not accumulate forever.
+- `Space` spawns an attack hitbox and increments the attack sound counter.
+- Touching a gem despawns it and increments the pickup sound counter.
+- Touching the enemy damages the player and increments the hurt sound counter.
+- Audio entities do not accumulate forever.
+- The UI counters match the gameplay events.
 
 ## Change
 
@@ -176,7 +209,7 @@ to:
 GameAudioEvent::Pickup => 960.0,
 ```
 
-Expected result: pickup sounds become higher pitched without changing pickup logic.
+Expected result: pickup sounds become higher pitched without changing the pickup system.
 
 ---
 

@@ -142,7 +142,7 @@ struct CollectibleBundle {
 }
 ```
 
-상속이 아닙니다. 적은 `Enemy`, `Body`, `Velocity`, `Transform`, `Sprite`를 가진 엔티티입니다. 수집 아이템은 `Collectible`, `Body`, `Velocity`, `Transform`, `Sprite`를 가진 엔티티입니다.
+ECS에서는 필요한 컴포넌트 조합이 엔티티의 역할을 만듭니다. 적은 `Enemy`, `Body`, `Velocity`, `Transform`, `Sprite`를 가진 엔티티입니다. 수집 아이템은 `Collectible`, `Body`, `Velocity`, `Transform`, `Sprite`를 가진 엔티티입니다.
 
 ## 구현 흐름 4: 플레이어 움직이기
 

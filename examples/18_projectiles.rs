@@ -4,9 +4,18 @@ use bevy_tutorial::tutorial_capture::{add_tutorial_screenshot, tutorial_capture_
 const PLAYER_SPEED: f32 = 280.0;
 const PROJECTILE_SPEED: f32 = 520.0;
 const PROJECTILE_LIFETIME: f32 = 0.9;
+const HITBOX_LIFETIME: f32 = 0.12;
 const PLAYER_SIZE: Vec2 = Vec2::splat(38.0);
 const ENEMY_SIZE: Vec2 = Vec2::splat(34.0);
 const PROJECTILE_SIZE: Vec2 = Vec2::new(28.0, 12.0);
+const HITBOX_SIZE: Vec2 = Vec2::new(58.0, 34.0);
+const HITBOX_DISTANCE: f32 = 44.0;
+
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+}
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum GameSet {
@@ -17,6 +26,9 @@ enum GameSet {
 }
 
 #[derive(Component)]
+struct GameplayEntity;
+
+#[derive(Component)]
 struct Player;
 
 #[derive(Component)]
@@ -24,6 +36,12 @@ struct Enemy;
 
 #[derive(Component)]
 struct Projectile {
+    lifetime: Timer,
+    damage: i32,
+}
+
+#[derive(Component)]
+struct AttackHitbox {
     lifetime: Timer,
     damage: i32,
 }
@@ -40,15 +58,20 @@ struct Velocity(Vec2);
 struct Facing(Vec2);
 
 #[derive(Component)]
-struct Health(i32);
+struct Health {
+    current: i32,
+    max: i32,
+}
 
 #[derive(Component)]
 struct StatusText;
 
 #[derive(Resource, Default)]
-struct ProjectileStats {
-    fired: u32,
-    hits: u32,
+struct CombatStats {
+    slashes: u32,
+    shots: u32,
+    melee_hits: u32,
+    projectile_hits: u32,
 }
 
 #[derive(Bundle)]
@@ -72,6 +95,7 @@ impl BodyBundle {
 
 #[derive(Bundle)]
 struct PlayerBundle {
+    gameplay: GameplayEntity,
     player: Player,
     body: BodyBundle,
     facing: Facing,
@@ -81,6 +105,7 @@ struct PlayerBundle {
 impl PlayerBundle {
     fn new() -> Self {
         Self {
+            gameplay: GameplayEntity,
             player: Player,
             body: BodyBundle::new(Vec3::new(-260.0, 0.0, 2.0), PLAYER_SIZE),
             facing: Facing(Vec2::X),
@@ -91,6 +116,7 @@ impl PlayerBundle {
 
 #[derive(Bundle)]
 struct EnemyBundle {
+    gameplay: GameplayEntity,
     enemy: Enemy,
     body: BodyBundle,
     health: Health,
@@ -100,9 +126,10 @@ struct EnemyBundle {
 impl EnemyBundle {
     fn new(position: Vec3) -> Self {
         Self {
+            gameplay: GameplayEntity,
             enemy: Enemy,
             body: BodyBundle::new(position, ENEMY_SIZE),
-            health: Health(2),
+            health: Health { current: 3, max: 3 },
             sprite: Sprite::from_color(Color::srgb(0.90, 0.24, 0.30), ENEMY_SIZE),
         }
     }
@@ -110,6 +137,7 @@ impl EnemyBundle {
 
 #[derive(Bundle)]
 struct ProjectileBundle {
+    gameplay: GameplayEntity,
     projectile: Projectile,
     body: BodyBundle,
     sprite: Sprite,
@@ -120,6 +148,7 @@ impl ProjectileBundle {
         let angle = direction.y.atan2(direction.x);
 
         Self {
+            gameplay: GameplayEntity,
             projectile: Projectile {
                 lifetime: Timer::from_seconds(PROJECTILE_LIFETIME, TimerMode::Once),
                 damage: 1,
@@ -140,12 +169,43 @@ impl ProjectileBundle {
     }
 }
 
+#[derive(Bundle)]
+struct AttackHitboxBundle {
+    gameplay: GameplayEntity,
+    hitbox: AttackHitbox,
+    body: Body,
+    sprite: Sprite,
+    transform: Transform,
+}
+
+impl AttackHitboxBundle {
+    fn new(position: Vec3, direction: Vec2) -> Self {
+        Self {
+            gameplay: GameplayEntity,
+            hitbox: AttackHitbox {
+                lifetime: Timer::from_seconds(HITBOX_LIFETIME, TimerMode::Once),
+                damage: 1,
+            },
+            body: Body {
+                half_size: HITBOX_SIZE / 2.0,
+            },
+            sprite: Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
+            transform: Transform {
+                translation: position,
+                rotation: Quat::from_rotation_z(direction.y.atan2(direction.x)),
+                ..default()
+            },
+        }
+    }
+}
+
 fn main() {
     let mut app = App::new();
 
     app.insert_resource(ClearColor(Color::srgb(0.07, 0.08, 0.10)))
-        .init_resource::<ProjectileStats>()
+        .init_resource::<CombatStats>()
         .add_plugins(DefaultPlugins)
+        .init_state::<GameState>()
         .configure_sets(
             Update,
             (
@@ -159,24 +219,41 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (player_input, fire_projectile)
+            (player_input, spawn_attack_hitbox, fire_projectile)
                 .chain()
-                .in_set(GameSet::Input),
+                .in_set(GameSet::Input)
+                .run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            (move_bodies, tick_projectile_lifetime)
+            (
+                move_bodies,
+                tick_projectile_lifetime,
+                expire_attack_hitboxes,
+            )
                 .chain()
-                .in_set(GameSet::Movement),
+                .in_set(GameSet::Movement)
+                .run_if(in_state(GameState::Playing)),
         )
-        .add_systems(Update, projectiles_hit_enemies.in_set(GameSet::Collision))
-        .add_systems(Update, update_status_text.in_set(GameSet::Ui));
+        .add_systems(
+            Update,
+            (attack_hitboxes_hit_enemies, projectiles_hit_enemies)
+                .chain()
+                .in_set(GameSet::Collision)
+                .run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            update_status_text
+                .in_set(GameSet::Ui)
+                .run_if(in_state(GameState::Playing)),
+        );
 
     add_tutorial_screenshot(&mut app, "assets/screenshots/ch18-projectiles.png", 20);
     app.run();
 }
 
-fn setup(mut commands: Commands, mut stats: ResMut<ProjectileStats>) {
+fn setup(mut commands: Commands, mut stats: ResMut<CombatStats>) {
     commands.spawn(Camera2d);
     commands.spawn(PlayerBundle::new());
 
@@ -202,18 +279,24 @@ fn setup(mut commands: Commands, mut stats: ResMut<ProjectileStats>) {
     ));
 
     if tutorial_capture_enabled() {
-        stats.fired = 1;
+        stats.shots = 1;
+        stats.slashes = 1;
+        commands.spawn(ProjectileBundle::new(Vec3::new(-60.0, 20.0, 3.0), Vec2::X));
         commands.spawn((
-            Projectile {
+            GameplayEntity,
+            AttackHitbox {
                 lifetime: Timer::from_seconds(30.0, TimerMode::Once),
-                damage: 1,
+                damage: 0,
             },
             Body {
-                half_size: PROJECTILE_SIZE / 2.0,
+                half_size: HITBOX_SIZE / 2.0,
             },
-            Velocity(Vec2::ZERO),
-            Sprite::from_color(Color::srgb(1.0, 0.82, 0.28), PROJECTILE_SIZE),
-            Transform::from_xyz(-60.0, 20.0, 3.0),
+            Sprite::from_color(Color::srgb(1.0, 0.46, 0.28), HITBOX_SIZE),
+            Transform {
+                translation: Vec3::new(-120.0, -45.0, 3.0),
+                rotation: Quat::from_rotation_z(0.0),
+                ..default()
+            },
         ));
     }
 }
@@ -246,13 +329,30 @@ fn player_input(
     }
 }
 
+fn spawn_attack_hitbox(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    player: Single<(&Transform, &Facing), With<Player>>,
+    mut stats: ResMut<CombatStats>,
+) {
+    if !keyboard.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    let (transform, facing) = *player;
+    let position = transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
+
+    commands.spawn(AttackHitboxBundle::new(position, facing.0));
+    stats.slashes += 1;
+}
+
 fn fire_projectile(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
     player: Single<(&Transform, &Facing), With<Player>>,
-    mut stats: ResMut<ProjectileStats>,
+    mut stats: ResMut<CombatStats>,
 ) {
-    if !keyboard.just_pressed(KeyCode::Space) {
+    if !keyboard.just_pressed(KeyCode::KeyF) {
         return;
     }
 
@@ -260,7 +360,7 @@ fn fire_projectile(
     let start = transform.translation + (facing.0 * 34.0).extend(1.0);
 
     commands.spawn(ProjectileBundle::new(start, facing.0));
-    stats.fired += 1;
+    stats.shots += 1;
 }
 
 fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
@@ -283,11 +383,59 @@ fn tick_projectile_lifetime(
     }
 }
 
+fn expire_attack_hitboxes(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut hitboxes: Query<(Entity, &mut AttackHitbox)>,
+) {
+    for (entity, mut hitbox) in &mut hitboxes {
+        hitbox.lifetime.tick(time.delta());
+
+        if hitbox.lifetime.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn attack_hitboxes_hit_enemies(
+    mut commands: Commands,
+    hitboxes: Query<(Entity, &Transform, &Body, &AttackHitbox)>,
+    mut enemies: Query<(Entity, &Transform, &Body, &mut Health), With<Enemy>>,
+    mut stats: ResMut<CombatStats>,
+) {
+    let mut defeated = Vec::new();
+
+    for (hitbox_entity, hitbox_transform, hitbox_body, hitbox) in &hitboxes {
+        let mut hit_anything = false;
+
+        for (enemy_entity, enemy_transform, enemy_body, mut health) in &mut enemies {
+            if defeated.contains(&enemy_entity) {
+                continue;
+            }
+
+            if overlaps(hitbox_transform, hitbox_body, enemy_transform, enemy_body) {
+                health.current -= hitbox.damage;
+                hit_anything = true;
+                stats.melee_hits += 1;
+
+                if health.current <= 0 {
+                    commands.entity(enemy_entity).despawn();
+                    defeated.push(enemy_entity);
+                }
+            }
+        }
+
+        if hit_anything {
+            commands.entity(hitbox_entity).despawn();
+        }
+    }
+}
+
 fn projectiles_hit_enemies(
     mut commands: Commands,
     projectiles: Query<(Entity, &Transform, &Body, &Projectile)>,
     mut enemies: Query<(Entity, &Transform, &Body, &mut Health), With<Enemy>>,
-    mut stats: ResMut<ProjectileStats>,
+    mut stats: ResMut<CombatStats>,
 ) {
     let mut defeated = Vec::new();
 
@@ -303,11 +451,11 @@ fn projectiles_hit_enemies(
                 enemy_transform,
                 enemy_body,
             ) {
-                health.0 -= projectile.damage;
+                health.current -= projectile.damage;
                 commands.entity(projectile_entity).despawn();
-                stats.hits += 1;
+                stats.projectile_hits += 1;
 
-                if health.0 <= 0 {
+                if health.current <= 0 {
                     commands.entity(enemy_entity).despawn();
                     defeated.push(enemy_entity);
                 }
@@ -319,17 +467,31 @@ fn projectiles_hit_enemies(
 }
 
 fn update_status_text(
-    stats: Res<ProjectileStats>,
-    enemies: Query<(), With<Enemy>>,
+    stats: Res<CombatStats>,
+    enemies: Query<&Health, With<Enemy>>,
     projectiles: Query<(), With<Projectile>>,
+    hitboxes: Query<(), With<AttackHitbox>>,
     mut text: Single<&mut Text, With<StatusText>>,
 ) {
+    let enemy_health = enemies
+        .iter()
+        .map(|health| format!("{}/{}", health.current, health.max))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     text.0 = format!(
-        "WASD move | Space fire\nprojectiles: {} | fired: {} | hits: {} | enemies: {}",
+        "WASD move | Space slash | F fire\nshots: {} | projectile hits: {} | slashes: {} | melee hits: {}\nprojectiles: {} | hitboxes: {} | enemy health: {}",
+        stats.shots,
+        stats.projectile_hits,
+        stats.slashes,
+        stats.melee_hits,
         projectiles.iter().count(),
-        stats.fired,
-        stats.hits,
-        enemies.iter().count()
+        hitboxes.iter().count(),
+        if enemy_health.is_empty() {
+            "cleared".to_string()
+        } else {
+            enemy_health
+        }
     );
 }
 

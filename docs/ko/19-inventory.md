@@ -10,7 +10,7 @@
 
 ## 이 장에서 만들 것
 
-이 장이 끝나면 플레이어가 월드에 놓인 아이템을 인벤토리에 담을 수 있습니다. 아이템은 맵에서 사라지고, 보유 수량은 올라가며, HUD는 현재 인벤토리를 보여줍니다.
+RPG 데이터 모델에 인벤토리를 추가합니다. 맵 위의 아이템은 위치와 충돌 범위를 가진 엔티티로 남고, 수집되는 순간 두 데이터가 바뀝니다. `Inventory`는 플레이어가 무엇을 갖고 있는지 저장하고, `RunStats`는 이번 플레이의 점수를 저장합니다.
 
 ![아이템을 수집하면 인벤토리 숫자가 바뀌는 장면](../../assets/screenshots/ch19-inventory.png)
 
@@ -22,9 +22,29 @@ cargo run --example 19_inventory
 
 WASD나 방향키로 움직여 아이템에 닿아 봅니다.
 
-## 구현 흐름 1: 아이템 종류와 보유 상태 분리하기
+## 이어받는 계약
 
-월드 아이템은 자신이 무엇인지 저장합니다.
+이 장은 인벤토리 기능에 필요한 단계만 둡니다.
+
+```text
+GameState::Playing      게임플레이 시스템 실행 조건
+GameSet                 Input -> Collision -> Ui
+GameplayEntity          생성된 게임플레이 오브젝트 표시
+Body                    아이템 수집 충돌에 쓰는 충돌 크기
+RunStats                이번 플레이의 점수
+```
+
+새로 생기는 데이터 주인은 셋입니다.
+
+```text
+InventoryItem 컴포넌트   맵 위 아이템이 무엇인지
+ItemKind enum            가능한 아이템 종류
+Inventory 리소스         플레이어가 가진 아이템 개수
+```
+
+## 구현 흐름 1: 아이템 종류와 보유 수량 분리하기
+
+`ItemKind`는 아이템 종류를 나타냅니다.
 
 ```rust
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -35,7 +55,17 @@ enum ItemKind {
 }
 ```
 
-인벤토리는 플레이어가 몇 개 갖고 있는지 저장합니다.
+각 derive에는 이유가 있습니다.
+
+```text
+Component    필요하면 enum 값을 직접 컴포넌트로 붙일 수 있음
+Debug        인벤토리 규칙을 디버깅할 때 출력 가능
+Clone/Copy   작은 enum 값을 컴포넌트에서 복사해 꺼낼 수 있음
+PartialEq/Eq 비교 가능
+Hash         HashMap이나 set 방식 규칙에 바로 사용 가능
+```
+
+플레이어의 현재 보유 수량은 리소스에 둡니다.
 
 ```rust
 #[derive(Resource, Default)]
@@ -47,11 +77,11 @@ struct Inventory {
 }
 ```
 
-둘은 다른 책임입니다. `ItemKind::Gem`은 아이템 정의이고, `inventory.gems`는 현재 보유 상태입니다.
+`ItemKind::Gem`은 아이템의 정체성이고, `inventory.gems`는 현재 플레이어 상태입니다.
 
-## 구현 흐름 2: 맵 위 아이템을 엔티티로 만들기
+## 구현 흐름 2: 아이템을 월드 엔티티로 두기
 
-바닥에 놓인 아이템은 위치와 충돌 범위를 가집니다.
+바닥에 놓인 아이템은 충돌과 화면 표현을 가집니다.
 
 ```rust
 #[derive(Component)]
@@ -60,28 +90,17 @@ struct InventoryItem {
 }
 ```
 
-아이템 Bundle은 데이터와 화면 표현을 함께 묶습니다.
-
-```rust
-struct ItemBundle {
-    item: InventoryItem,
-    body: Body,
-    sprite: Sprite,
-    transform: Transform,
-}
-```
-
-Bundle 생성자는 아이템 종류와 위치를 받습니다.
+번들은 맵 배치 코드를 한 번의 생성 호출로 만듭니다.
 
 ```rust
 commands.spawn(ItemBundle::new(ItemKind::Key, Vec3::new(260.0, 120.0, 2.0)));
 ```
 
-이렇게 하면 맵 배치 코드가 컴포넌트 나열이 아니라 게임 오브젝트 배치처럼 읽힙니다.
+아이템은 여전히 월드 오브젝트입니다. 이동시킬 수도 있고, 제거할 수도 있고, 씬 파일에서 불러올 수도 있고, 충돌 시스템으로 검사할 수도 있습니다.
 
-## 구현 흐름 3: 추가 규칙을 한 메서드에 모으기
+## 구현 흐름 3: 인벤토리 변경을 한 메서드에 모으기
 
-인벤토리 변경 규칙은 `Inventory::add`에 둡니다.
+인벤토리 변경 규칙은 `Inventory::add`가 책임집니다.
 
 ```rust
 impl Inventory {
@@ -97,64 +116,59 @@ impl Inventory {
 }
 ```
 
-`match`는 모든 아이템 종류를 명시합니다. 나중에 `ItemKind::Coin`을 추가하면 Rust가 “코인은 어떻게 저장할 건데?”라고 컴파일 단계에서 묻습니다.
+`match`는 모든 아이템 종류를 다룹니다. `ItemKind::Coin`을 추가하면 Rust가 코인을 어떻게 저장할지 코드로 정하라고 요구합니다.
 
-## 구현 흐름 4: 충돌로 아이템 줍기
+## 구현 흐름 4: 수집 규칙 정하기
 
-수집 시스템은 플레이어를 읽고 아이템 엔티티를 검사합니다.
+수집은 보유 수량과 점수를 함께 바꿉니다.
 
 ```rust
-fn collect_items(
-    mut commands: Commands,
-    player: Single<(&Transform, &Body), With<Player>>,
-    items: Query<(Entity, &Transform, &Body, &InventoryItem)>,
-    mut inventory: ResMut<Inventory>,
-) {
-    let (player_transform, player_body) = *player;
-
-    for (entity, item_transform, item_body, item) in &items {
-        if overlaps(player_transform, player_body, item_transform, item_body) {
-            inventory.add(item.kind);
-            commands.entity(entity).despawn();
-        }
-    }
+if overlaps(player_transform, player_body, item_transform, item_body) {
+    inventory.add(item.kind);
+    stats.score += item.kind.score_value();
+    commands.entity(entity).despawn();
 }
 ```
 
-규칙은 이렇습니다.
+이 장의 게임플레이 계약은 이렇습니다.
 
 ```text
-플레이어와 아이템이 겹침 -> 인벤토리 변경 -> 아이템 엔티티 제거
+플레이어와 아이템이 겹침
+-> Inventory 변경
+-> ItemKind에 따라 RunStats.score 변경
+-> 아이템 엔티티 제거
 ```
+
+이제 보석은 인벤토리 아이템이면서 점수 아이템입니다. 둘을 연결하는 규칙이 `ItemKind::score_value`입니다.
 
 ## 구현 흐름 5: 화면 고정 UI로 보여주기
 
-UI 시스템은 인벤토리 리소스를 읽고 텍스트를 씁니다.
+UI 시스템은 리소스를 읽고 텍스트를 씁니다.
 
 ```rust
 text.0 = format!(
-    "Gems: {} | Keys: {} | Potions: {}",
+    "Score: {} | Gems: {} | Keys: {} | Potions: {}",
+    stats.score,
     inventory.gems,
     inventory.keys,
     inventory.potions,
 );
 ```
 
-이 UI는 화면 고정 UI입니다. 플레이어가 움직여도 인벤토리 표시는 화면 같은 자리에 남습니다.
+HUD는 `Inventory`와 `RunStats`의 현재 값을 읽어 화면에 보여줍니다.
 
-## 구현 흐름 6: 인벤토리 계약 정하기
+## 통합 지점
 
-이 장의 인벤토리는 다음 규칙을 가집니다.
+인벤토리는 앞뒤 장과 이렇게 연결됩니다.
 
 ```text
-아이템은 stack 가능
-슬롯 제한 없음
-줍기는 항상 성공
-인벤토리는 실행 중 메모리에만 있음
-저장/불러오기와 연결하려면 진행도 저장 장의 구조를 사용
+17장 점수        RunStats.score는 이번 플레이의 가치를 계속 기록
+19장 인벤토리    Inventory는 플레이어가 가진 아이템을 기록
+22장 씬 로딩     씬 파일이 InventoryItem 엔티티를 생성 가능
+저장/불러오기    오래 유지할 인벤토리 필드는 Progress에 추가 가능
 ```
 
-슬롯 제한이 필요하면 `Inventory::add`에 규칙을 넣습니다. 수집 시스템 곳곳에 슬롯 규칙을 흩뿌리면 나중에 유지보수가 어려워집니다.
+저장 데이터는 소유자를 기준으로 정합니다. 오래 유지되는 플레이어 진행도는 저장하고, 씬에서 다시 만들 수 있는 임시 월드 엔티티는 저장하지 않습니다.
 
 ## Rust로 보면
 
@@ -173,19 +187,22 @@ let last = inventory
     .unwrap_or_else(|| "last pickup: none".to_string());
 ```
 
-`map`은 `Some`일 때 실행됩니다. `unwrap_or_else`는 `None`일 때 기본 문장을 만듭니다.
+`map`은 `Some(kind)`를 처리합니다. `unwrap_or_else`는 `None`일 때 쓸 문장을 만듭니다.
+
+`ItemKind`는 `Copy`라서 `inventory.add(item.kind)`처럼 컴포넌트 안의 enum 값을 복사해서 넘길 수 있습니다. 작은 enum에는 적절한 선택입니다. 파일에서 읽은 큰 아이템 데이터라면 ID를 쓰거나 필요한 시점에 명시적으로 복제하는 편이 낫습니다.
 
 ## Bevy로 보면
 
-이 예제에서는 플레이어가 한 명이고 인벤토리도 하나라서 리소스가 맞습니다.
+이 예제에서는 플레이어가 한 명이므로 인벤토리를 리소스로 둡니다.
 
 ```text
-맵 위의 아이템       Component
-플레이어의 보유 수량  Resource
-화면 표시            UI entity
+맵 위 아이템          Component
+플레이어 보유 수량     Resource
+이번 플레이 점수       Resource
+HUD 표시              UI entity
 ```
 
-멀티플레이 게임이라면 플레이어마다 `Inventory` 컴포넌트를 붙이는 편이 더 자연스럽습니다. 데이터 소유자는 게임 규칙이 정합니다.
+멀티플레이 게임이라면 `Inventory`를 각 플레이어 엔티티의 컴포넌트로 두는 쪽이 자연스럽습니다. 데이터 소유자는 게임 규칙이 정합니다.
 
 ## 확인
 
@@ -198,8 +215,9 @@ cargo run --example 19_inventory
 확인 기준:
 
 - 플레이어가 아이템에 닿을 수 있습니다.
-- 주운 아이템은 사라집니다.
-- 해당 아이템 수량이 올라갑니다.
+- 수집한 아이템은 사라집니다.
+- 해당 인벤토리 수량이 올라갑니다.
+- `ItemKind::score_value`에 따라 점수가 오릅니다.
 - 마지막으로 주운 아이템 문구가 바뀝니다.
 - 남은 아이템 수가 줄어듭니다.
 

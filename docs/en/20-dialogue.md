@@ -10,7 +10,7 @@
 
 ## Outcome
 
-At the end of this chapter, the player can approach NPCs, start dialogue, advance lines, and close the conversation. Dialogue text appears in screen-space UI while the world remains ECS-driven.
+This chapter adds a dialogue mode to the RPG loop. NPCs own their static lines. `DialogueState` records the current conversation. `GameState::Dialogue` pauses normal movement while dialogue input advances or closes the conversation.
 
 ![A dialogue panel opens when the player talks to an NPC.](../../assets/screenshots/ch20-dialogue.png)
 
@@ -20,11 +20,46 @@ At the end of this chapter, the player can approach NPCs, start dialogue, advanc
 cargo run --example 20_dialogue
 ```
 
-Move near an NPC with WASD or arrow keys. Press E to talk, Space to advance, and Esc to close.
+Controls:
 
-## Build Step 1: Put Lines On The NPC
+```text
+WASD / Arrow keys   move
+E                   talk near an NPC
+Space               advance dialogue
+Esc                 close dialogue
+```
 
-An NPC owns its static dialogue data:
+## Continuity Contract
+
+Dialogue uses the state system already introduced earlier:
+
+```text
+GameState::Playing    movement and exploration
+GameState::Dialogue   dialogue input and text presentation
+DialogueState         which NPC is active and which line is visible
+Npc component         speaker name and line data
+```
+
+The mode owner is `GameState`. The content owner is `Npc`. The current conversation owner is `DialogueState`.
+
+## Build Step 1: Add A Dialogue State
+
+The state enum now has two modes:
+
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+    Dialogue,
+}
+```
+
+The derives satisfy Bevy's state contract. `Default` chooses `Playing` as the starting mode.
+
+## Build Step 2: Put Lines On NPCs
+
+An NPC owns speaker data:
 
 ```rust
 #[derive(Component)]
@@ -34,23 +69,23 @@ struct Npc {
 }
 ```
 
-The lines are string slices with a `'static` lifetime because the example writes them directly in code:
+This example writes lines directly in Rust source, so it can borrow string literals. A string literal has type `&'static str`: a borrowed string slice that lives for the whole program.
 
-```rust
-Npc {
-    name: "Mapper",
-    lines: &[
-        "A scene file can decide where I stand.",
-        "Code decides what talking to me means.",
-    ],
-}
+Use this rule for string ownership:
+
+```text
+hard-coded text in source code      &'static str
+borrowed text from somewhere else   &str with that borrow's lifetime
+text loaded from files or network   String
+arrays of hard-coded lines          &'static [&'static str]
+scene-loaded dialogue lines         Vec<String>
 ```
 
-For dialogue loaded from files, you would use `String` values instead.
+Chapter 22 uses `Vec<String>` because JSON parsing creates owned strings at runtime.
 
-## Build Step 2: Store The Current Conversation In A Resource
+## Build Step 3: Store The Current Conversation
 
-The current dialogue is global mode-like state:
+The active conversation is a resource:
 
 ```rust
 #[derive(Resource, Default)]
@@ -60,118 +95,87 @@ struct DialogueState {
 }
 ```
 
-This does not belong on the NPC. The NPC has lines. The conversation resource says which NPC is currently active and which line is visible.
+The NPC owns lines. The resource owns the currently open conversation.
 
-## Build Step 3: Detect A Nearby NPC
+## Build Step 4: Gate Movement By State
 
-The prompt system searches NPCs near the player:
-
-```rust
-let nearby = npcs.iter().find(|(transform, _)| {
-    player
-        .translation
-        .truncate()
-        .distance(transform.translation.truncate())
-        <= INTERACT_DISTANCE
-});
-```
-
-If an NPC is near, the UI shows an interaction prompt. If no NPC is near, it tells the player to move closer.
-
-## Build Step 4: Start, Advance, And End Dialogue
-
-The input system has three branches:
-
-```text
-Esc while talking       close dialogue
-Space while talking     advance to the next line
-E while near an NPC     start dialogue
-```
-
-The active NPC is stored as an `Entity`:
+Movement reads the current state:
 
 ```rust
-dialogue.active_npc = Some(entity);
-dialogue.line_index = 0;
-```
-
-When Space advances past the last line, the dialogue closes:
-
-```rust
-if dialogue.line_index >= npc.lines.len() {
-    dialogue.active_npc = None;
-    dialogue.line_index = 0;
-}
-```
-
-## Build Step 5: Pause Movement During Dialogue
-
-The movement system reads `DialogueState`:
-
-```rust
-if dialogue.active_npc.is_some() {
+if *state.get() != GameState::Playing {
     return;
 }
 ```
 
-This is a simple mode gate. In a larger game, this same idea usually becomes a Bevy `State`, such as `GameState::Dialogue`.
+This is stronger than a random boolean because every system can use the same app mode contract.
 
-## Build Step 6: Render The Dialogue Panel
+## Build Step 5: Start, Advance, And End Dialogue
 
-The dialogue UI is a normal Bevy UI entity:
+The input system owns the transition rules:
 
-```rust
-commands.spawn((
-    DialogueText,
-    Text::new(""),
-    Node {
-        position_type: PositionType::Absolute,
-        bottom: px(28),
-        left: px(32),
-        right: px(32),
-        padding: UiRect::all(px(14)),
-        ..default()
-    },
-    BackgroundColor(Color::srgba(0.06, 0.07, 0.10, 0.88)),
-));
+```text
+E near NPC while Playing       active_npc = Some(entity), state = Dialogue
+Space while Dialogue           line_index += 1
+past last line                 active_npc = None, state = Playing
+Esc                            active_npc = None, state = Playing
 ```
 
-The update system writes the speaker and line:
+The selected NPC is stored as an `Entity`:
 
 ```rust
-text.0 = format!("{}:\n{}", npc.name, line);
+dialogue.active_npc = Some(entity);
+dialogue.line_index = 0;
+next_state.set(GameState::Dialogue);
 ```
 
-## Rust Lens
+## Build Step 6: Render Dialogue UI
 
-`Option<Entity>` represents conversation state:
-
-```rust
-active_npc: Option<Entity>
-```
-
-The code uses `let else` to leave early when no dialogue is active:
+The UI system reads `DialogueState` and the active `Npc`:
 
 ```rust
 let Some(entity) = dialogue.active_npc else {
     text.0.clear();
     return;
 };
+
+let Ok(npc) = npcs.get(entity) else {
+    text.0.clear();
+    return;
+};
 ```
 
-That keeps the active case flat and readable.
+`let else` keeps the active conversation case flat. If no dialogue is active, the text is cleared and the system exits.
 
-## Bevy Lens
+## Integration Points
 
-Dialogue crosses three ECS responsibilities:
+Dialogue plugs into the RPG loop through state, not through movement code:
 
 ```text
-NPC component       static speaker data
-Dialogue resource   current conversation state
-UI entity           screen-space presentation
+Input      E/Space/Esc decides dialogue transitions
+Movement   runs only while GameState::Playing
+Ui         prompt and dialogue panel reflect current state
+Scenes     loaded NPCs can use the same name + lines data shape
 ```
 
-Do not store the current line index inside every NPC. Only one conversation is active, so one resource is the clearer owner.
+If combat should stop during dialogue, gate combat systems with `in_state(GameState::Playing)`. If the pause menu should close dialogue first, make that rule in the input state transition system.
+
+## Rust Lens
+
+`Option<Entity>` models “no active dialogue” versus “talking to this NPC”:
+
+```rust
+active_npc: Option<Entity>
+```
+
+`Entity` is an ID, not a reference. Storing it avoids long-lived Rust borrows across frames. Each frame, the UI system uses the ID to query the current NPC data.
+
+`&'static str` is a borrowed string slice with a lifetime:
+
+```rust
+name: &'static str
+```
+
+The apostrophe syntax names how long a borrow is valid. `'static` means the data lives for the whole program. You see it here because hard-coded string literals are embedded in the program binary.
 
 ## Check
 
@@ -184,9 +188,9 @@ cargo run --example 20_dialogue
 Expected result:
 
 - A prompt appears near an NPC.
-- E opens the dialogue panel.
-- Space advances through the NPC's lines.
-- Esc closes the dialogue.
+- `E` opens the dialogue panel and enters `GameState::Dialogue`.
+- `Space` advances through the NPC's lines.
+- `Esc` closes dialogue and returns to `GameState::Playing`.
 - Movement pauses while dialogue is active.
 
 ## Change
@@ -197,7 +201,7 @@ Add a new line to the Mapper NPC:
 "Dialogue data can grow without changing the UI system.",
 ```
 
-Expected result: Space now advances through one more line for that NPC.
+Expected result: `Space` now advances through one more line for that NPC.
 
 ---
 

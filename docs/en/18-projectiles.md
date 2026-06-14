@@ -10,7 +10,7 @@
 
 ## Outcome
 
-At the end of this chapter, the player fires moving projectiles. A projectile has its own position, velocity, collision body, damage, and lifetime. It can hit enemies or disappear when its timer runs out.
+This chapter extends the chapter 17 combat loop with a ranged attack. `Space` remains the melee slash. `F` fires a projectile in the player's facing direction. Both attacks use the same health model, collision body model, gameplay cleanup marker, and system-order contract.
 
 ![Projectiles travel from the player toward enemies.](../../assets/screenshots/ch18-projectiles.png)
 
@@ -20,11 +20,38 @@ At the end of this chapter, the player fires moving projectiles. A projectile ha
 cargo run --example 18_projectiles
 ```
 
-Move with WASD or arrow keys. Press Space to fire in the last movement direction.
+Controls:
 
-## Build Step 1: Treat A Projectile As An Entity
+```text
+WASD / Arrow keys   move
+Space               melee slash
+F                   fire projectile
+```
 
-A projectile is not a flag on the player. It is a short-lived entity:
+## Chapter Contract
+
+This example isolates the projectile rule and preserves only the contracts that the rule touches:
+
+```text
+GameState::Playing      gates gameplay systems
+GameSet                 Input -> Movement -> Collision -> Ui
+GameplayEntity          marks spawned gameplay objects
+Body                    collision size
+Velocity                movement vector
+Facing                  last non-zero movement direction
+Health { current, max } enemy health data shape
+Space slash             remains a melee attack
+```
+
+The new feature adds one more combat object:
+
+```text
+Projectile entity = GameplayEntity + Projectile + Body + Velocity + Transform + Sprite
+```
+
+## Build Step 1: Add A Projectile Component
+
+A projectile has gameplay rules, not only a sprite:
 
 ```rust
 #[derive(Component)]
@@ -34,55 +61,35 @@ struct Projectile {
 }
 ```
 
-The entity also receives `Body`, `Velocity`, `Transform`, and `Sprite`. That gives it the same basic movement and collision vocabulary as the player and enemies.
+`lifetime` controls cleanup for missed shots. `damage` lets projectile collision use the same health mutation as melee collision.
 
-```text
-Projectile entity = Projectile + Body + Velocity + Transform + Sprite
-```
+## Build Step 2: Keep Melee And Ranged Inputs Separate
 
-This is the rule for RPG objects: if something has independent position and lifetime, make it an entity.
-
-## Build Step 2: Spawn From Player Position And Facing
-
-The player stores the direction it last moved:
+The integrated slice already uses `Space` for slash hitboxes. This chapter keeps that contract and puts projectiles on `F`:
 
 ```rust
-#[derive(Component)]
-struct Facing(Vec2);
-```
+if !keyboard.just_pressed(KeyCode::KeyF) {
+    return;
+}
 
-When Space is pressed, the fire system reads the player transform and facing direction:
-
-```rust
 let (transform, facing) = *player;
 let start = transform.translation + (facing.0 * 34.0).extend(1.0);
 
 commands.spawn(ProjectileBundle::new(start, facing.0));
 ```
 
-The extra `34.0` places the projectile in front of the player instead of inside the player body. The `extend(1.0)` turns the 2D direction offset into a `Vec3` and raises the projectile above the player layer.
+The firing system reads the player position and `Facing`, then creates a new entity with the right starting data. Movement remains the movement system's job.
 
-## Build Step 3: Give The Projectile Velocity And Rotation
+## Build Step 3: Put Movement In The Bundle
 
-The bundle constructor turns direction into movement:
+The projectile bundle turns a direction into velocity and rotation:
 
 ```rust
 velocity: Velocity(direction * PROJECTILE_SPEED),
+rotation: Quat::from_rotation_z(direction.y.atan2(direction.x)),
 ```
 
-It also rotates the sprite:
-
-```rust
-let angle = direction.y.atan2(direction.x);
-
-Transform {
-    translation: position,
-    rotation: Quat::from_rotation_z(angle),
-    ..default()
-}
-```
-
-The projectile can now use the shared movement system:
+That makes projectiles compatible with the shared movement system:
 
 ```rust
 fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
@@ -92,9 +99,9 @@ fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), W
 }
 ```
 
-## Build Step 4: Expire Missed Projectiles
+## Build Step 4: Expire Missed Shots
 
-A projectile that never hits anything still needs a cleanup rule:
+Projectiles that never collide still need an owner for cleanup:
 
 ```rust
 fn tick_projectile_lifetime(
@@ -112,71 +119,70 @@ fn tick_projectile_lifetime(
 }
 ```
 
-Without this system, missed projectiles would stay in the world forever.
+The cleanup rule belongs to the projectile feature. It should not be hidden inside player input or enemy logic.
 
-## Build Step 5: Apply Damage On Collision
+## Build Step 5: Reuse The Health Contract
 
-The collision system compares every projectile with every enemy:
+Projectile collision mutates the same `Health { current, max }` structure used by enemies in the integrated slice:
 
 ```rust
 if overlaps(projectile_transform, projectile_body, enemy_transform, enemy_body) {
-    health.0 -= projectile.damage;
+    health.current -= projectile.damage;
     commands.entity(projectile_entity).despawn();
-    stats.hits += 1;
 
-    if health.0 <= 0 {
+    if health.current <= 0 {
         commands.entity(enemy_entity).despawn();
     }
 }
 ```
 
-The projectile despawns after a hit. That makes it a non-piercing projectile. If you want piercing arrows later, the rule changes here.
+The projectile despawns after one hit. Piercing projectiles would change this exact rule.
 
-## Build Step 6: Put The Systems In Order
+## Integration Points
 
-Projectiles need a stable frame order:
+The feature uses the frame phases it needs from the chapter 17 combat loop:
 
 ```text
-Input      fire projectile
-Movement   move projectile and tick lifetime
-Collision  apply projectile hits
-Ui         show counts
+Input       read F and spawn ProjectileBundle
+Movement    move projectiles and tick projectile lifetime
+Collision   compare projectiles with enemy bodies and apply Health damage
+Ui          show shots, hits, active projectiles, and enemy health
 ```
 
-If collision runs before movement, a projectile hits using last frame's position. If cleanup never runs, missed projectiles accumulate. The order is part of the feature contract.
+The order matters. Movement before collision means the hit test uses the projectile's current-frame position. Lifetime cleanup prevents missed shots from accumulating.
 
 ## Rust Lens
 
-This chapter uses a tuple struct for single-field components:
+`Projectile` is a named-field component because it owns two facts:
 
 ```rust
-struct Velocity(Vec2);
-struct Health(i32);
+struct Projectile {
+    lifetime: Timer,
+    damage: i32,
+}
 ```
 
-`velocity.0` and `health.0` access the inner value. Tuple structs are useful when the component has one obvious value and the type name carries the meaning.
+`Velocity(Vec2)` and `Facing(Vec2)` are tuple structs because each wraps one value and the type name supplies the meaning.
 
-The direction code uses `normalize_or_zero`:
+The state and set derives each unlock a scheduling role:
+
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+}
+```
+
+`States` lets Bevy store the enum as app state. `Default` chooses the starting state. `Eq` and `Hash` let Bevy use values as state identities. `Clone` and `Copy` make small state values easy to pass. `Debug` supports diagnostics and error messages.
+
+The movement code uses `normalize_or_zero`:
 
 ```rust
 let normalized = direction.normalize_or_zero();
 ```
 
-Normalizing a zero vector is unsafe math. `normalize_or_zero` returns `Vec2::ZERO` for the zero case, so firing and movement code can stay simple.
-
-## Bevy Lens
-
-Projectiles are a good ECS fit because they are independent world facts:
-
-```text
-where it is      Transform
-how it moves     Velocity
-what it hits     Body
-what it does     Projectile { damage, lifetime }
-how it looks     Sprite
-```
-
-The firing system only creates intent. The movement and collision systems do the rest. That separation is why adding projectiles does not require rewriting player movement.
+Normalizing a zero vector can produce an invalid numeric direction such as `NaN`. `normalize_or_zero` makes the zero-input case explicit and keeps movement and firing code deterministic.
 
 ## Check
 
@@ -188,11 +194,12 @@ cargo run --example 18_projectiles
 
 Expected result:
 
-- Space fires a projectile in the player's facing direction.
-- Projectiles move without the player carrying them.
-- Enemies lose health and disappear after enough hits.
-- Missed projectiles disappear after a short time.
-- The UI counters change as shots are fired and hits land.
+- `Space` creates a short melee hitbox.
+- `F` fires a projectile in the player's facing direction.
+- Projectiles move independently from the player.
+- Enemy health decreases from both melee and projectile hits.
+- Missed projectiles disappear after their lifetime.
+- The UI shows shots, projectile hits, slash counts, melee hits, active projectiles, and enemy health.
 
 ## Change
 

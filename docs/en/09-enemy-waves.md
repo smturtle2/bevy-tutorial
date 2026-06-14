@@ -176,7 +176,7 @@ Rust array indexing requires a `usize`.
 
 ## Bevy Lens
 
-Wave spawning is not an `Update` local variable because the state must survive across frames. That is the resource rule:
+Wave spawning state lives in a resource because it must survive across frames:
 
 ```text
 temporary calculation inside one frame -> local variable
