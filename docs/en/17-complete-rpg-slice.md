@@ -235,7 +235,7 @@ commands create and remove entities
 queries apply behavior to matching entities
 ```
 
-This is the architecture you extend when adding audio, inventory, dialogue, projectiles, or scene loading.
+This is the complete architecture for the tutorial track. The systems from earlier chapters now run together inside one game loop.
 
 ## Check
 
@@ -270,19 +270,23 @@ Vec3::new(0.0, 210.0, 3.0),
 
 Expected result: the new gem appears in the map, uses existing collision, increases score when collected, and requires no new collection system.
 
-## Where To Extend Next
+## Main Track Completion
 
-Good next extensions are concrete and data-driven:
+This tutorial includes all of these systems in the main track:
 
 ```text
-audio             spawn sound effects when systems detect events
-projectiles       entities with Velocity, Body, lifetime, and damage
-inventory         resource or components holding collected item data
-dialogue          state-gated UI plus interaction markers
-scene loading     map data file -> spawn map bundles
+camera follow      smooth camera movement that follows the player
+enemy waves        wave-based spawning and enemy pursuit
+attack hitbox      short-lived melee hitboxes
+sprite assets      image and sprite-sheet driven presentation
+screen-space UI    HUD elements fixed to the screen
+animation state    idle, moving, and attack animation states
+map geometry       handmade walls and collision structure
+game states        menu, playing, paused, and game over
+save/load          best score and unlocked wave persistence
 ```
 
-Add one feature by defining its data first, then placing its systems into the frame order.
+The final chapter connects these systems in one frame order and shows how each responsibility stays clear.
 
 ---
 
