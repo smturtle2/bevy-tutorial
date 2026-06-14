@@ -1,6 +1,5 @@
 # 4. Input And Movement
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: ECS fundamentals](03-ecs-fundamentals.md) · [Next: Bundles, plugins, and sets →](05-bundles-plugins-sets.md)
@@ -9,49 +8,84 @@
 
 ---
 
-This chapter turns a static sprite into a controllable entity, then refactors movement into a more reusable ECS shape.
+## Outcome
 
-## Walkthrough: `03_player_input`
+At the end of this chapter, keyboard input moves the player in two versions:
 
-Run:
+1. Direct movement writes `Transform`.
+2. Refactored movement writes `Velocity`, then a body movement system writes `Transform`.
+
+That refactor is the first step toward reusable gameplay code.
+
+![Player input writes velocity, and body movement writes transform.](../../assets/screenshots/ch04-velocity-body.png)
+
+## Run
 
 ```sh
 cargo run --example 03_player_input
+cargo run --example 04_velocity_body
 ```
 
-![The direct input example shows the player moving through a trail of Transform positions.](../../assets/screenshots/ch03-player-input.png)
+Use WASD or arrow keys in both examples.
 
-Use WASD or arrow keys. The blue square should move.
+## Build Step 1: Read Keyboard State
 
-The example introduces a marker component and a resource:
+The input resource is:
 
 ```rust
-#[derive(Component)]
-struct Player;
-
-#[derive(Resource)]
-struct PlayerSpeed(f32);
+Res<ButtonInput<KeyCode>>
 ```
 
-`Player` marks which entity receives input. `PlayerSpeed` stores one shared speed value:
+The direct movement example builds a direction vector:
 
 ```rust
-.insert_resource(PlayerSpeed(280.0))
+let mut direction = Vec2::ZERO;
+
+if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
+    direction.x -= 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
+    direction.x += 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) {
+    direction.y -= 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) {
+    direction.y += 1.0;
+}
 ```
 
-The setup system attaches `Player`, `Sprite`, and `Transform` to one entity:
+`pressed` stays true while the key is held. Later, attacks and menus use `just_pressed`, which is true only on the frame the key changed from up to down.
+
+## Build Step 2: Normalize Diagonal Movement
+
+Without normalization, diagonal movement is faster because `(1, 1)` has a longer length than `(1, 0)`.
 
 ```rust
-commands.spawn((
-    Player,
-    Sprite::from_color(Color::srgb(0.25, 0.70, 1.0), Vec2::splat(80.0)),
-    Transform::from_translation(Vec3::ZERO),
-));
+let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
 ```
 
-## Direct Movement System
+`normalize_or_zero()` keeps diagonal speed equal and safely returns zero when the direction is zero.
 
-The movement system reads input and directly mutates position:
+## Build Step 3: Make Movement Frame Independent
+
+`time.delta_secs()` is the number of seconds since the previous frame:
+
+```rust
+transform.translation += movement.extend(0.0);
+```
+
+The formula is:
+
+```text
+pixels this frame = direction * pixels per second * seconds this frame
+```
+
+That keeps movement roughly consistent across different frame rates.
+
+## Build Step 4: Move Through `Transform`
+
+The direct version queries player transforms:
 
 ```rust
 fn move_player(
@@ -60,8 +94,6 @@ fn move_player(
     speed: Res<PlayerSpeed>,
     mut players: Query<&mut Transform, With<Player>>,
 ) {
-    let mut direction = Vec2::ZERO;
-    // input checks...
     let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
 
     for mut transform in &mut players {
@@ -70,119 +102,31 @@ fn move_player(
 }
 ```
 
-Read the signature as the system contract:
+This is simple and correct for one player. The downside is that input and movement physics live in the same system.
 
-```text
-Reads frame time.
-Reads keyboard state.
-Reads player speed.
-Mutates Transform on entities with Player.
-```
+## Build Step 5: Introduce `Velocity`
 
-This is a good first version because every piece is visible in one place.
-
-## Input Resource
-
-`ButtonInput<KeyCode>` is a Bevy resource. It stores keyboard button state for the current frame:
+The refactored example adds movement data:
 
 ```rust
-keyboard.pressed(KeyCode::ArrowLeft)
-keyboard.pressed(KeyCode::KeyA)
-```
-
-`pressed` stays true while the key is held. Bevy also has edge-style checks such as "just pressed", but held movement should use `pressed`.
-
-## Direction Normalization
-
-The system accumulates a direction vector:
-
-```rust
-let mut direction = Vec2::ZERO;
-direction.x -= 1.0;
-direction.y += 1.0;
-```
-
-Diagonal input produces a vector like `(-1.0, 1.0)`, which is longer than a horizontal vector. Normalize before applying speed:
-
-```rust
-direction.normalize_or_zero()
-```
-
-`normalize_or_zero` avoids invalid math when no keys are pressed and the vector is zero.
-
-## Frame Independence
-
-Movement uses delta time:
-
-```rust
-let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
-```
-
-`time.delta_secs()` is the duration of the previous frame in seconds. Multiplying by it makes movement roughly "units per second" instead of "units per frame."
-
-`Transform.translation` is a `Vec3`, while movement is a `Vec2`, so the code extends it:
-
-```rust
-transform.translation += movement.extend(0.0);
-```
-
-The new `z` value is `0.0`.
-
-## Why Refactor?
-
-The direct system couples keyboard input to position changes:
-
-```text
-keyboard -> Transform
-```
-
-That works for a single player square. It becomes limiting when enemies, knockback, scripted movement, or physics also need to move entities.
-
-The next example splits intent from motion:
-
-```text
-input system    -> writes Velocity
-movement system -> reads Velocity, writes Transform
-```
-
-## Walkthrough: `04_velocity_body`
-
-Run:
-
-```sh
-cargo run --example 04_velocity_body
-```
-
-![The velocity refactor shows input writing Velocity while the movement system writes Transform.](../../assets/screenshots/ch04-velocity-body.png)
-
-The controls feel similar, but the data model is different:
-
-```rust
-#[derive(Component)]
-struct Body;
-
 #[derive(Component)]
 struct Velocity(Vec2);
 ```
 
-`Body` marks entities that can be moved by the movement system. `Velocity` stores their movement direction.
-
-The input system writes `Velocity`:
+Input now writes intent:
 
 ```rust
 fn handle_player_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
-    // calculate direction...
-
     for mut velocity in &mut players {
         velocity.0 = direction.normalize_or_zero();
     }
 }
 ```
 
-The movement system reads `Velocity` and writes `Transform`:
+Movement applies velocity:
 
 ```rust
 fn move_bodies(
@@ -198,43 +142,86 @@ fn move_bodies(
 }
 ```
 
-This is the first major ECS design step in the tutorial. Systems communicate through component data instead of directly calling each other.
+Now enemies, projectiles, and NPCs can all move with the same `move_bodies` system if they have `Body`, `Velocity`, and `Transform`.
 
-## Ordering With `.chain()`
+## Build Step 6: Chain The Order
 
-`04_velocity_body` registers the systems like this:
+The refactor needs input before movement:
 
 ```rust
-.add_systems(Update, (handle_player_input, move_bodies).chain())
+.add_systems(
+    Update,
+    (handle_player_input, move_bodies, capture_velocity_body_pose).chain(),
+)
 ```
 
-The order matters:
+`.chain()` makes those systems run in tuple order.
+
+Without an order, Bevy may run systems in any valid order. That is good for parallelism, but gameplay code must declare dependencies when one system writes data another system reads in the same frame.
+
+## Rust Lens
+
+This line is doing three Rust things:
+
+```rust
+for mut transform in &mut players {
+```
 
 ```text
-handle_player_input writes Velocity
-move_bodies reads Velocity
+&mut players       borrow the query mutably for iteration
+transform          local binding for each matched Transform
+mut transform      this binding can write through the mutable reference
 ```
 
-`.chain()` tells Bevy to run them in that order. Without ordering, Bevy is free to run compatible systems in an order chosen by the scheduler.
+This tuple loop mirrors query data:
 
-When systems live in different plugins, `SystemSet` expresses the same ordering contract across plugin boundaries.
+```rust
+for (mut transform, velocity) in &mut bodies {
+```
 
-## Exercise
+The first item is mutable because the query asked for `&mut Transform`. The second is read-only because the query asked for `&Velocity`.
 
-In a local experiment:
+## Bevy Lens
 
-1. Change `BodySpeed(220.0)` to `BodySpeed(80.0)`.
-2. Remove `.chain()` and observe whether movement still appears correct.
-3. Add a second spawned `PlayerBundle::new()` and think about what `Query<&mut Velocity, With<Player>>` will do.
+The design improvement is responsibility separation:
 
-The first question is "does it move?" The stronger ECS question is "which entities does each system affect?"
+```text
+Player input system     keyboard -> Velocity
+Body movement system    Velocity + Time -> Transform
+```
 
-## Common Mistakes
+This is why `update_players` is usually too vague as a system name. A system name should say which behavior it owns: `handle_player_input`, `move_bodies`, `enemy_ai`, `collect_items`, `update_hud_text`.
 
-- Storing frame-scaled movement in `Velocity`, then multiplying by delta time again later.
-- Forgetting to normalize diagonal input.
-- Making `move_bodies` filter with `With<Player>`, which prevents enemies or other bodies from reusing it.
-- Assuming systems run in registration order without `.chain()`, explicit ordering, or sets.
+## Check
+
+Run both examples:
+
+```sh
+cargo run --example 03_player_input
+cargo run --example 04_velocity_body
+```
+
+Expected result:
+
+- Both examples move with WASD/arrows.
+- Diagonal movement does not visibly outrun straight movement.
+- In `04_velocity_body`, the player still moves even though input no longer touches `Transform` directly.
+
+## Change
+
+In `examples/04_velocity_body.rs`, change:
+
+```rust
+.insert_resource(BodySpeed(220.0))
+```
+
+to:
+
+```rust
+.insert_resource(BodySpeed(80.0))
+```
+
+Expected result: the player moves slower without changing the input system. That proves speed belongs to body movement, not keyboard reading.
 
 ---
 

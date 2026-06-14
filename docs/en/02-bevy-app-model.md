@@ -1,6 +1,5 @@
 # 2. The Bevy App Model
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: Rust for Bevy](01-rust-for-bevy.md) · [Next: ECS fundamentals →](03-ecs-fundamentals.md)
@@ -9,23 +8,24 @@
 
 ---
 
-Run the first example:
+## Outcome
+
+At the end of this chapter, you can read a Bevy `App` setup from top to bottom. You will know where plugins, resources, startup systems, update systems, and commands fit.
+
+![The second example renders a blue sprite through a Camera2d, Sprite, and Transform.](../../assets/screenshots/ch02-spawn-sprite.png)
+
+## Run
 
 ```sh
 cargo run --example 01_empty_app
+cargo run --example 02_spawn_sprite
 ```
 
-You should see a Bevy window with a dark background. This first window already contains the core application shape.
+The first example opens a dark window. The second example adds a visible blue square.
 
-## Walkthrough: `01_empty_app`
+## Build Step 1: Create The App
 
-The example starts with Bevy's prelude:
-
-```rust
-use bevy::prelude::*;
-```
-
-Then `main` builds and runs an app:
+`examples/01_empty_app.rs` starts with this chain:
 
 ```rust
 fn main() {
@@ -37,52 +37,21 @@ fn main() {
 }
 ```
 
-Read the chain from top to bottom:
+Read it as a registration list:
 
 ```text
-App::new()                 create the app builder
-insert_resource(...)       store one global value in the world
-add_plugins(DefaultPlugins) add Bevy's standard engine plugins
-add_systems(Startup, ...)  register one startup system
-run()                      enter the engine loop
+App::new()                  create the app
+insert_resource(...)        store one global value in the ECS world
+add_plugins(DefaultPlugins) add windowing, rendering, input, assets, logging, and defaults
+add_systems(Startup, ...)   register a system that runs once
+run()                       enter Bevy's engine loop
 ```
 
-`DefaultPlugins` adds the normal engine pieces: windowing, rendering, input, assets, logging, and related defaults. This is the standard starting point for the tutorial examples.
+`App` is the place where behavior is registered. The behavior itself lives in systems.
 
-Using the Rust syntax from chapter 1, `App::new()` is an associated function on the `App` type, and `.insert_resource(...)`, `.add_plugins(...)`, `.add_systems(...)`, and `.run()` are method calls on the app builder value.
+## Build Step 2: Add A Startup System
 
-## `App` Registers Gameplay
-
-`App` is where you register the data and behavior Bevy should run. Movement logic, AI, collision, and UI live in systems, and `App` schedules those systems.
-
-This is the important split:
-
-```text
-App setup = register plugins, resources, systems, and schedules
-Systems   = do work by reading and writing ECS data
-```
-
-## Startup And Update
-
-Bevy systems are plain Rust functions registered into schedules.
-
-```rust
-.add_systems(Startup, setup_camera)
-.add_systems(Update, move_bodies)
-```
-
-The schedule controls when a system runs:
-
-```text
-Startup = run once when the app starts
-Update  = run every frame
-```
-
-Registration decides timing. A function named `setup` runs every frame if you register it in `Update`.
-
-## Commands And Deferred World Changes
-
-The startup system in `01_empty_app` is:
+The startup system creates a camera:
 
 ```rust
 fn setup_camera(mut commands: Commands) {
@@ -90,35 +59,50 @@ fn setup_camera(mut commands: Commands) {
 }
 ```
 
-`Commands` queues changes to the ECS world. Spawning an entity changes world structure, so it goes through `Commands`.
+`Startup` means the system runs once when the app starts:
 
-Common `Commands` uses:
+```rust
+.add_systems(Startup, setup_camera)
+```
 
-- `commands.spawn(...)`: create an entity with components.
-- `commands.entity(entity).despawn()`: remove an entity.
-- `commands.entity(entity).insert(...)`: add components.
-- `commands.entity(entity).remove::<T>()`: remove a component type.
+`Update` means a system runs every frame:
 
-Commands are deferred. Inside a system, `commands.spawn(...)` queues a structural change. Bevy applies queued commands at schedule boundaries and other defined sync points, so queries see structural changes after those apply points. This keeps system execution safe and parallelizable.
+```rust
+.add_systems(Update, move_player)
+```
 
-Rule of thumb:
+The function name does not decide timing. The schedule decides timing.
+
+## Build Step 3: Use Commands For Structural Changes
+
+`Commands` queues changes to the ECS world:
+
+```rust
+commands.spawn(Camera2d);
+commands.spawn((Sprite::from_color(...), Transform::from_translation(...)));
+```
+
+Common command operations:
+
+```text
+spawn(...)                  create an entity
+entity(id).despawn()        remove an entity
+entity(id).insert(...)      add components
+entity(id).remove::<T>()    remove one component type
+```
+
+Commands are deferred. A system records the requested structural change; Bevy applies queued commands at defined apply points. This is one reason systems can run safely in parallel.
+
+Use this rule:
 
 ```text
 Commands = change which entities/components exist
 Query    = read or mutate component values that already exist
 ```
 
-## Walkthrough: `02_spawn_sprite`
+## Build Step 4: Spawn A Sprite Entity
 
-Run:
-
-```sh
-cargo run --example 02_spawn_sprite
-```
-
-![The second app model example renders a blue sprite entity through a Camera2d, Sprite, and Transform.](../../assets/screenshots/ch02-spawn-sprite.png)
-
-The setup system creates two entities:
+`examples/02_spawn_sprite.rs` creates two entities:
 
 ```rust
 fn setup(mut commands: Commands) {
@@ -131,58 +115,84 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-The camera entity has a `Camera2d` component. The square entity has a `Sprite` and a `Transform`.
-
-This square is an ECS entity made from components:
+The camera entity has:
 
 ```text
-Entity
-  Sprite
-  Transform
+Camera2d
 ```
 
-`Sprite` controls what is drawn. `Transform` controls where it is drawn.
+The square entity has:
 
-## Plugins Are Registration Units
+```text
+Sprite       what to draw
+Transform    where to draw it
+```
 
-A plugin groups app registration:
+Rendering is ECS data. A visible 2D thing needs something renderable and a transform, and the world needs a camera that can see it.
+
+## Rust Lens
+
+The sprite spawn uses a tuple:
 
 ```rust
-struct GamePlugin;
-
-impl Plugin for GamePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_camera);
-    }
-}
+commands.spawn((
+    Sprite::from_color(...),
+    Transform::from_translation(...),
+));
 ```
 
-`build` is called when the plugin is added. Per-frame behavior stays in systems that the plugin registers.
+That tuple is not a class. It is a group of component values attached to one entity.
 
-Later examples use plugins to divide responsibilities:
+The color call uses associated functions:
 
-```text
-GamePlugin   = top-level game setup and ordering
-BodyPlugin   = movement data and movement systems
-PlayerPlugin = player spawn and input systems
+```rust
+Color::srgb(0.25, 0.70, 1.0)
+Vec2::splat(80.0)
+Vec3::ZERO
 ```
 
-## Checkpoint
+Each one creates a value before Bevy stores it as component data.
 
-Modify `examples/02_spawn_sprite.rs` in your own experiment and answer these questions:
+## Bevy Lens
 
-- What happens if you remove `commands.spawn(Camera2d)`?
-- What happens if you change `Vec2::splat(80.0)` to `Vec2::splat(30.0)`?
-- What happens if you change `Transform::from_translation(Vec3::ZERO)` to `Transform::from_translation(Vec3::new(200.0, 0.0, 0.0))`?
+`DefaultPlugins` gives you the engine pieces. Without it, you are not asking Bevy to create the normal window, renderer, input, asset loader, or logging setup.
 
-Expected lesson: rendering is just ECS data. You make visible things by spawning entities with the right components.
+`ClearColor` is a resource because there is one background clear color for the app:
 
-## Common Mistakes
+```rust
+.insert_resource(ClearColor(Color::srgb(0.08, 0.09, 0.11)))
+```
 
-- Registering a system in `Startup` and expecting it to run every frame.
-- Mutating an existing component through `Commands` when a `Query<&mut T>` would be clearer.
-- Forgetting `DefaultPlugins`, then wondering why no window or rendering appears.
-- Spawning a sprite without a camera and seeing an empty window.
+Resources are global typed values. Components belong to entities.
+
+## Check
+
+Run the sprite example:
+
+```sh
+cargo run --example 02_spawn_sprite
+```
+
+You should see a blue square centered in a dark window.
+
+Now make these changes one at a time:
+
+- Remove `commands.spawn(Camera2d);`: the app runs, but the square is not visible.
+- Change `Vec2::splat(80.0)` to `Vec2::splat(30.0)`: the square becomes smaller.
+- Change `Vec3::ZERO` to `Vec3::new(200.0, 0.0, 0.0)`: the square moves right.
+
+## Change
+
+Add a second square:
+
+```rust
+commands.spawn((
+    Sprite::from_color(Color::srgb(1.0, 0.82, 0.25), Vec2::splat(40.0)),
+    Transform::from_xyz(120.0, 0.0, 1.0),
+));
+```
+
+Expected result: a smaller yellow square appears to the right. Its `z` value is higher, so if it overlaps the blue square it is drawn on top.
 
 ---
 

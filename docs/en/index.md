@@ -10,35 +10,50 @@
 
 ---
 
-This tutorial teaches Rust and Bevy as one track. You will build from a blank Bevy window to a small top-down RPG that includes camera follow, enemy waves, attack hitboxes, sprite assets, screen-space UI, animation state, handmade map geometry, game states, and save/load.
+This is a community-made path for learning Rust and Bevy by building a small top-down RPG. The track starts with a window and a sprite, then grows into movement, ECS data design, plugins, assets, camera follow, waves, hitboxes, UI, animation, map geometry, game states, and save/load.
 
-![RPG feature roadmap](../../assets/diagrams/rpg-feature-roadmap.png)
+You are not reading a reference manual. You are building one working slice at a time, running it, changing one rule, and then learning the Rust and Bevy concepts that made that slice work.
 
-> [!IMPORTANT]
-> This tutorial teaches Rust from the first Bevy example onward. Rust syntax appears in the order the examples need it, and each chapter is tied to one runnable example.
+![Complete RPG tutorial preview](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
-## Learning Contract
+## How This Tutorial Teaches
 
-By the end, you should be able to:
+Every chapter follows the same learning loop:
 
-- Read and write Bevy systems with `Commands`, `Res`, `ResMut`, `Query`, `Single`, `With`, and `Without`.
-- Design components as small data types and spawn stable gameplay entities through bundles.
-- Split frame behavior into explicit phases with `.chain()` and `SystemSet`.
-- Explain the Rust behind Bevy code: function signatures, `struct`, tuple, tuple struct, `impl`, trait, derive, generic types, ownership, references, `Option`, `Result`, `match`, modules, and visibility.
-- Load image assets and sprite sheets through `AssetServer`.
-- Keep world-space gameplay, screen-space UI, and game state transitions separate.
-- Save and load explicit progress data without pretending the whole Bevy world is a save file.
+1. **Outcome**: the visible behavior or code structure you will have at the end.
+2. **Run**: the exact example command for the chapter.
+3. **Build**: the important systems, components, resources, or bundles that create the result.
+4. **Rust lens**: the Rust syntax that matters in that chapter.
+5. **Bevy lens**: the engine rule or ECS rule behind the code.
+6. **Check**: observable proof that the chapter is working.
+7. **Change**: a small modification with a clear expected result.
 
-## Learning Path
+The English version is the primary source text. The Korean version mirrors the same structure so both languages teach the same path.
 
-| Phase | Chapters | Output |
+## Reference Trail
+
+The writing style and learning order are informed by public Rust and Bevy learning material:
+
+- [Bevy Quick Start](https://bevy.org/learn/quick-start/getting-started/) for short runnable app steps.
+- [Bevy official examples](https://bevy.org/examples/) for small feature-focused programs.
+- [Bevy ECS docs](https://docs.rs/bevy_ecs/latest/bevy_ecs/) for the entity/component/system model.
+- [The Rust Programming Language](https://doc.rust-lang.org/book/) for ownership, structs, enums, and error handling.
+- [Rust By Example](https://doc.rust-lang.org/rust-by-example/) for runnable syntax examples.
+- [Tainted Coders Bevy guides](https://taintedcoders.com/bevy/queries) for deeper feature-by-feature explanations.
+
+This tutorial uses its own code and its own RPG project, but it keeps the same public-doc discipline: small examples, concrete outputs, and precise terminology.
+
+## Learning Map
+
+| Phase | Chapters | You build |
 |---|---:|---|
-| Setup | 0 | A Cargo/Bevy project that builds |
-| Rust + app basics | 1-2 | You can read Rust type syntax and Bevy app registration |
-| ECS fundamentals | 3-5 | Components, resources, queries, bundles, plugins, and system order |
-| Presentation | 6 | Assets, camera follow, and world text |
-| RPG foundation | 7 | A compact loop with movement, AI, collision, score, and HUD |
-| Required RPG systems | 8-17 | Camera smoothing, waves, attacks, UI, animation, map geometry, states, and save/load |
+| Setup | 0 | A Cargo project pinned to Bevy `0.18.1` |
+| Rust first pass | 1 | Enough Rust to read Bevy systems instead of copying them blindly |
+| App and ECS base | 2-5 | App setup, commands, entities, components, resources, queries, bundles, plugins, order |
+| Presentation | 6 | Image assets, camera follow, and world-space text |
+| RPG foundation | 7 | A compact playable arena with movement, enemies, pickups, health, score, and HUD |
+| RPG systems | 8-16 | Camera smoothing, waves, attacks, sprite assets, fixed HUD, animation, map collision, states, save/load |
+| Integration | 17 | A small complete RPG slice using the systems from the track |
 
 ## Chapters
 
@@ -61,10 +76,9 @@ By the end, you should be able to:
 16. [Save and load progress](16-save-load-progress.md)
 17. [Complete RPG slice](17-complete-rpg-slice.md)
 
-## Run The Track
+## Run The Examples
 
-> [!TIP]
-> Read one chapter, run its example, change a small rule, then move on. Treat the final code as something to inspect and modify. Bevy becomes easier when you keep asking: "what does this system read, and what does it write?"
+Each chapter has one example command. Run the command, observe the result, then read the chapter with the example file open.
 
 ```sh
 cargo run --example 01_empty_app
@@ -86,29 +100,26 @@ cargo run --example 16_save_load_progress
 cargo run --example 17_complete_rpg_slice
 ```
 
-## Mental Model
+## Core Mental Model
 
-The core model stays stable:
+The core model stays stable for the whole track:
 
 ```text
 Entity    = an ID in the world
-Component = data attached to an entity
-System    = a Rust function that reads/writes ECS data
-Resource  = one global value stored in the world
-Plugin    = a registration unit for systems/resources/plugins
-State     = a schedule-level mode such as Menu or Playing
+Component = typed data attached to an entity
+Resource  = one typed value stored globally in the world
+System    = a Rust function scheduled by Bevy
+Query     = typed access to matching entities
+Commands  = deferred structural changes
+Plugin    = registration unit for systems, resources, and other plugins
+State     = app mode that controls which systems run
 ```
 
-When code feels scattered, look for the responsibility boundary:
+When a chapter feels busy, reduce it to two questions:
 
 ```text
-Component = data shape
-Bundle    = spawn shape
-System    = behavior
-Resource  = global state
-SystemSet = frame order
-State     = which systems are allowed to run
-Module    = source-code boundary
+What data exists?
+Which system reads or writes that data this frame?
 ```
 
 ---

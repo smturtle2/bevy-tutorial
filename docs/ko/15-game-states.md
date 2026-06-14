@@ -1,71 +1,222 @@
 # 15. 게임 상태
 
-
 <div align="center">
 
-[목차](index.md) · [← 이전: 직접 만든 맵 지오메트리](14-handmade-map-geometry.md) · [다음: 진행 저장/불러오기 →](16-save-load-progress.md)
+[목차](index.md) · [← 이전: 직접 만든 맵 구조](14-handmade-map-geometry.md) · [다음: 진행도 저장과 불러오기 →](16-save-load-progress.md)
 
 </div>
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 앱에 네 가지 모드가 생깁니다. 메뉴, 플레이 중, 일시정지, 게임 오버입니다. 각 시스템은 자기 모드에서만 실행됩니다.
+
+![게임 상태 예제는 메뉴에서 시작해 플레이 화면으로 전환됩니다.](../../assets/screenshots/ch15-game-state-menu.png)
+
+## 실행
 
 ```sh
 cargo run --example 15_game_states
 ```
 
-![게임 상태 예제는 Menu에서 시작하며, 플레이어가 run을 시작하기 전에는 메뉴 입력 시스템만 활성화됩니다.](../../assets/screenshots/ch15-game-state-menu.png)
+조작은 이렇습니다.
 
-이 장의 계약은 메뉴, 플레이, 일시정지, 게임오버를 하나의 enum 상태로 관리하는 것입니다. 상태는 어떤 시스템이 실행되는지, 어떤 UI가 생성/정리되는지 결정합니다.
+```text
+Enter     메뉴에서 시작
+WASD      플레이 중 이동
+H         디버그 피해
+P         일시정지/재개
+Esc       일시정지나 게임 오버에서 메뉴로 복귀
+R         게임 오버에서 재시작
+```
 
-## 핵심 ECS 계약
+## 구현 흐름 1: State enum 정의하기
 
-- `GameState`: `Menu`, `Playing`, `Paused`, `GameOver` 중 하나입니다.
-- `NextState<GameState>`: 다음 상태 전환 요청을 쓰는 리소스입니다.
-- `OnEnter`, `OnExit`: 상태에 들어가거나 나갈 때 한 번 실행되는 스케줄입니다.
-- `run_if(in_state(...))`: 특정 상태에서만 시스템을 실행합니다.
-- `GameplayEntity`, `MenuUi`, `PauseUi`, `GameOverUi`: 정리 대상을 구분하는 마커입니다.
+Bevy 상태는 Rust enum으로 만듭니다.
 
-상태 전환은 요청으로 시작됩니다. 시스템은 `next_state.set(...)`을 호출하고, Bevy가 스케줄 경계에서 상태를 바꿉니다.
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+enum GameState {
+    #[default]
+    Menu,
+    Playing,
+    Paused,
+    GameOver,
+}
+```
 
-## Rust 포인트
+상태 타입을 등록합니다.
 
-`#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]`는 Bevy 상태 타입의 계약입니다. 상태 enum은 복사 가능하고 비교 가능하며 해시 가능해야 합니다. `#[default]`는 `init_state::<GameState>()`가 처음 사용할 값을 지정합니다.
+```rust
+.init_state::<GameState>()
+```
 
-`cleanup_entities<T: Component>`는 제네릭 시스템입니다. `MenuUi`, `PauseUi`, `GameOverUi`처럼 타입만 다른 정리 로직을 하나의 함수로 재사용합니다.
+`#[default]`가 붙은 variant가 시작 상태입니다.
 
-## Bevy 포인트
+## 구현 흐름 2: 상태에 들어갈 때 UI 만들고, 나갈 때 지우기
 
-`OnEnter(GameState::Menu)`에서 메뉴 UI를 만들고 `OnExit(GameState::Menu)`에서 제거합니다. 이렇게 하면 Update 시스템이 매 프레임 UI 존재 여부를 직접 검사하지 않아도 됩니다.
+메뉴 UI는 `Menu` 상태에 들어갈 때 생성합니다.
 
-플레이 중인 엔티티에는 `GameplayEntity`를 붙입니다. 메뉴로 돌아가거나 게임오버가 될 때 이 마커로 한 번에 정리합니다.
+```rust
+.add_systems(OnEnter(GameState::Menu), spawn_menu)
+```
 
-## 프레임 흐름
+`Menu` 상태에서 나갈 때 제거합니다.
 
-1. 앱은 `Menu` 상태로 시작합니다.
-2. Enter를 누르면 플레이 엔티티를 스폰하고 `Playing`으로 전환합니다.
-3. `Playing`에서만 이동, 데미지, 사망 체크가 실행됩니다.
-4. P를 누르면 `Paused`로 전환하고 일시정지 UI를 생성합니다.
-5. 체력이 0이면 `GameOver`로 전환하고 플레이 엔티티를 정리합니다.
+```rust
+.add_systems(OnExit(GameState::Menu), cleanup_entities::<MenuUi>)
+```
 
-## 흔한 실수
+표식 컴포넌트로 메뉴 UI를 표시합니다.
 
-- 상태별 UI는 `OnExit`에서 정리해 메뉴, 일시정지, 게임오버 텍스트가 한 상태에 하나씩 보이게 합니다.
-- `NextState` 대신 현재 상태 리소스를 직접 바꾸려고 하면 Bevy 상태 스케줄과 어긋납니다.
-- `run_if(in_state(GameState::Playing))`를 빼면 메뉴나 일시정지 중에도 이동 시스템이 실행됩니다.
-- 게임플레이 엔티티에는 `GameplayEntity`를 붙여 상태 전환 정리 대상에 포함합니다.
+```rust
+#[derive(Component)]
+struct MenuUi;
+```
 
-## 작게 바꿔보기
+일시정지 UI와 게임 오버 UI도 같은 패턴을 씁니다.
 
-- Settings 상태를 하나 추가해보세요.
-- Playing에서 Escape를 누르면 Menu로 돌아가게 바꿔보세요.
-- 상태마다 다른 배경색을 쓰게 해보세요.
+## 구현 흐름 3: `run_if`로 시스템 실행 제한하기
+
+메뉴 입력은 플레이 중에 실행되면 안 됩니다.
+
+```rust
+.add_systems(Update, menu_input.run_if(in_state(GameState::Menu)))
+```
+
+게임플레이 시스템은 플레이 중에만 실행합니다.
+
+```rust
+.add_systems(
+    Update,
+    (move_player, debug_take_damage, game_over_when_dead)
+        .chain()
+        .run_if(in_state(GameState::Playing)),
+)
+```
+
+모든 시스템 안에 `if current_state == ...`를 쓰는 것보다 이 방식이 훨씬 깔끔합니다.
+
+## 구현 흐름 4: `NextState`로 전환 요청하기
+
+시스템은 `NextState`로 상태 전환을 요청합니다.
+
+```rust
+fn menu_input(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Enter) {
+        spawn_gameplay(&mut commands, &asset_server);
+        next_state.set(GameState::Playing);
+    }
+}
+```
+
+전환 적용은 Bevy의 상태 시스템이 처리합니다. 요청은 타입으로 명확하게 남습니다.
+
+## 구현 흐름 5: GameplayEntity로 런타임 엔티티 표시하기
+
+게임플레이 엔티티에는 공통 표식을 붙입니다.
+
+```rust
+#[derive(Component)]
+struct GameplayEntity;
+```
+
+메뉴로 돌아가거나 게임 오버에 들어갈 때 게임플레이 엔티티를 전부 제거할 수 있습니다.
+
+```rust
+for entity in &gameplay {
+    commands.entity(entity).despawn();
+}
+```
+
+UI 표식과 게임플레이 표식을 나눠 두면 정리 대상이 정확해집니다.
+
+## 구현 흐름 6: 제네릭 정리 시스템 쓰기
+
+정리 시스템은 어떤 표식 컴포넌트에도 쓸 수 있습니다.
+
+```rust
+fn cleanup_entities<T: Component>(mut commands: Commands, entities: Query<Entity, With<T>>) {
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
+}
+```
+
+그래서 등록할 때 이렇게 쓸 수 있습니다.
+
+```rust
+cleanup_entities::<MenuUi>
+cleanup_entities::<PauseUi>
+cleanup_entities::<GameOverUi>
+```
+
+## Rust로 보면
+
+`cleanup_entities::<MenuUi>`는 제네릭 타입을 직접 지정하는 문법입니다. 이 시스템에서 `T`가 `MenuUi`라는 뜻입니다.
+
+상태 enum에 여러 derive가 붙는 데에도 이유가 있습니다.
+
+```rust
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+```
+
+Bevy는 상태 값을 저장하고, 비교하고, hash하고, clone하고, debug 출력할 수 있어야 합니다. derive는 장식이 아니라 trait 요구사항을 만족시키는 코드입니다.
+
+## Bevy로 보면
+
+State는 schedule을 제어합니다.
+
+```text
+OnEnter(Menu)      Menu에 들어갈 때 한 번 실행
+OnExit(Menu)       Menu에서 나갈 때 한 번 실행
+Update + run_if    조건이 true인 프레임에만 실행
+NextState<T>       상태 전환 요청
+```
+
+메뉴, 플레이 중, 일시정지, 게임 오버, 로딩, 컷신처럼 앱 모드가 나뉘는 곳에 상태를 씁니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 15_game_states
+```
+
+기대 결과:
+
+- 앱은 메뉴에서 시작합니다.
+- Enter를 누르면 게임플레이가 생성되고 플레이 중 상태로 전환됩니다.
+- P를 누르면 일시정지 UI가 보이고 이동이 멈춥니다.
+- 일시정지에서 Esc를 누르면 게임플레이가 제거되고 메뉴로 돌아갑니다.
+- H를 눌러 체력을 0으로 만들면 게임 오버로 전환됩니다.
+- R을 누르면 게임 오버에서 다시 시작합니다.
+
+## 바꿔보기
+
+플레이어 시작 체력을 바꿔 봅니다.
+
+```rust
+Health(3)
+```
+
+```rust
+Health(1)
+```
+
+기대 결과: 플레이 중 `H`를 한 번만 눌러도 게임 오버로 넘어갑니다.
 
 ---
 
 <div align="center">
 
-[← 이전: 직접 만든 맵 지오메트리](14-handmade-map-geometry.md) · [목차](index.md) · [다음: 진행 저장/불러오기 →](16-save-load-progress.md)
+[← 이전: 직접 만든 맵 구조](14-handmade-map-geometry.md) · [목차](index.md) · [다음: 진행도 저장과 불러오기 →](16-save-load-progress.md)
 
 </div>

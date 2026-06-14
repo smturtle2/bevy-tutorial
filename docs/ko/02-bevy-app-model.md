@@ -1,31 +1,31 @@
 # 2. Bevy 앱 모델
 
-
 <div align="center">
 
-[목차](index.md) · [← 이전: Bevy를 위한 Rust](01-rust-for-bevy.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
+[목차](index.md) · [← 이전: Bevy에 필요한 Rust](01-rust-for-bevy.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
 
 </div>
 
 ---
 
-첫 예제를 실행합니다.
+## 이 장에서 만들 것
+
+이 장이 끝나면 Bevy의 `App` 설정을 위에서 아래로 읽을 수 있습니다. 플러그인, 리소스, startup system, update system, commands가 어디에 들어가는지 잡습니다.
+
+![두 번째 예제는 Camera2d, Sprite, Transform으로 파란 스프라이트를 그립니다.](../../assets/screenshots/ch02-spawn-sprite.png)
+
+## 실행
 
 ```sh
 cargo run --example 01_empty_app
+cargo run --example 02_spawn_sprite
 ```
 
-어두운 배경의 Bevy 창이 보여야 합니다. 이 첫 창 안에 이미 핵심 앱 형태가 들어 있습니다.
+첫 예제는 어두운 창을 엽니다. 두 번째 예제는 파란 사각형을 하나 그립니다.
 
-## 둘러보기: `01_empty_app`
+## 구현 흐름 1: App 만들기
 
-예제는 Bevy prelude로 시작합니다.
-
-```rust
-use bevy::prelude::*;
-```
-
-그다음 `main`이 앱을 만들고 실행합니다.
+`examples/01_empty_app.rs`는 이런 체인으로 시작합니다.
 
 ```rust
 fn main() {
@@ -37,52 +37,21 @@ fn main() {
 }
 ```
 
-체인을 위에서 아래로 읽으세요.
+등록 목록처럼 읽으면 됩니다.
 
 ```text
-App::new()                  앱 빌더를 만든다
-insert_resource(...)        월드에 전역 값 하나를 저장한다
-add_plugins(DefaultPlugins) Bevy의 기본 엔진 플러그인을 추가한다
-add_systems(Startup, ...)   startup 시스템 하나를 등록한다
-run()                       엔진 루프에 들어간다
+App::new()                  앱을 만듭니다
+insert_resource(...)        ECS 월드에 전역 값을 하나 저장합니다
+add_plugins(DefaultPlugins) 창, 렌더링, 입력, 에셋, 로그 등 기본 엔진 기능을 추가합니다
+add_systems(Startup, ...)   한 번 실행할 시스템을 등록합니다
+run()                       Bevy 엔진 루프를 시작합니다
 ```
 
-`DefaultPlugins`는 일반적인 엔진 구성요소를 추가합니다. 창, 렌더링, 입력, 에셋, 로깅과 관련 기본값이 여기에 들어갑니다. 튜토리얼 예제의 표준 시작점입니다.
+`App`은 동작을 등록하는 곳입니다. 실제 동작은 시스템 함수 안에 있습니다.
 
-1장에서 배운 Rust 문법으로 보면 `App::new()`는 `App` 타입의 연관 함수이고, 뒤의 `.insert_resource(...)`, `.add_plugins(...)`, `.add_systems(...)`, `.run()`은 만들어진 앱 빌더 값을 이어받는 메서드 호출입니다.
+## 구현 흐름 2: Startup 시스템 추가하기
 
-## `App`은 게임플레이를 등록합니다
-
-`App`은 Bevy가 실행할 데이터와 동작을 등록하는 곳입니다. 이동 로직, AI, 충돌, UI는 시스템 안에 있고, `App`은 그 시스템들을 스케줄에 등록합니다.
-
-중요한 구분은 다음입니다.
-
-```text
-App 설정 = 플러그인, 리소스, 시스템, 스케줄을 등록한다
-시스템   = ECS 데이터를 읽고 쓰는 일을 한다
-```
-
-## Startup과 Update
-
-Bevy 시스템은 스케줄에 등록되는 평범한 Rust 함수입니다.
-
-```rust
-.add_systems(Startup, setup_camera)
-.add_systems(Update, move_bodies)
-```
-
-스케줄이 실행 시점을 정합니다.
-
-```text
-Startup = 앱이 시작될 때 한 번 실행
-Update  = 매 프레임 실행
-```
-
-등록 위치가 실행 타이밍을 정합니다. `setup`이라는 이름의 함수도 `Update`에 등록하면 매 프레임 실행됩니다.
-
-## Commands와 지연된 월드 변경
-
-`01_empty_app`의 startup 시스템은 다음과 같습니다.
+startup system은 카메라를 만듭니다.
 
 ```rust
 fn setup_camera(mut commands: Commands) {
@@ -90,35 +59,50 @@ fn setup_camera(mut commands: Commands) {
 }
 ```
 
-`Commands`는 ECS 월드 변경을 큐에 넣습니다. 엔티티 생성은 월드 구조를 바꾸므로 `Commands`를 거칩니다.
+`Startup`에 등록하면 앱 시작 시 한 번 실행됩니다.
 
-흔한 `Commands` 사용:
+```rust
+.add_systems(Startup, setup_camera)
+```
 
-- `commands.spawn(...)`: 컴포넌트를 가진 엔티티를 만듭니다.
-- `commands.entity(entity).despawn()`: 엔티티를 제거합니다.
-- `commands.entity(entity).insert(...)`: 컴포넌트를 추가합니다.
-- `commands.entity(entity).remove::<T>()`: 컴포넌트 타입을 제거합니다.
+`Update`에 등록하면 매 프레임 실행됩니다.
 
-Commands는 지연됩니다. 시스템 안에서 `commands.spawn(...)`을 호출하면 구조 변경이 큐에 쌓입니다. Bevy는 스케줄 경계와 정의된 sync point에서 큐에 쌓인 commands를 적용하고, 쿼리는 그 적용 지점 뒤의 구조를 봅니다. 이렇게 해서 시스템 실행을 안전하고 병렬화 가능하게 유지합니다.
+```rust
+.add_systems(Update, move_player)
+```
 
-경험칙:
+함수 이름이 실행 시점을 정하는 것이 아닙니다. 어떤 스케줄에 등록했는지가 실행 시점을 정합니다.
+
+## 구현 흐름 3: 구조 변경은 Commands로 하기
+
+`Commands`는 ECS 월드 구조를 바꾸는 요청을 예약합니다.
+
+```rust
+commands.spawn(Camera2d);
+commands.spawn((Sprite::from_color(...), Transform::from_translation(...)));
+```
+
+자주 쓰는 명령은 이렇습니다.
 
 ```text
-Commands = 어떤 엔티티/컴포넌트가 존재하는지 바꾼다
-Query    = 이미 존재하는 컴포넌트 값을 읽거나 수정한다
+spawn(...)                  엔티티 생성
+entity(id).despawn()        엔티티 제거
+entity(id).insert(...)      컴포넌트 추가
+entity(id).remove::<T>()    컴포넌트 타입 하나 제거
 ```
 
-## 둘러보기: `02_spawn_sprite`
+Commands는 월드를 바로 바꾸는 방식이 아니라 예약 방식입니다. 시스템은 구조 변경 요청을 기록하고, Bevy가 정해진 지점에서 그 요청을 적용합니다. 이 덕분에 시스템들이 안전하게 병렬 실행될 수 있습니다.
 
-실행합니다.
+기준은 이렇게 잡으면 됩니다.
 
-```sh
-cargo run --example 02_spawn_sprite
+```text
+Commands = 어떤 엔티티와 컴포넌트가 존재하는지 바꿈
+Query    = 이미 존재하는 컴포넌트 값을 읽거나 수정함
 ```
 
-![두 번째 앱 모델 예제는 Camera2d, Sprite, Transform으로 파란 스프라이트 엔티티를 렌더링합니다.](../../assets/screenshots/ch02-spawn-sprite.png)
+## 구현 흐름 4: Sprite 엔티티 만들기
 
-setup 시스템은 엔티티 두 개를 만듭니다.
+`examples/02_spawn_sprite.rs`는 엔티티를 두 개 만듭니다.
 
 ```rust
 fn setup(mut commands: Commands) {
@@ -131,63 +115,89 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-카메라 엔티티에는 `Camera2d` 컴포넌트가 있습니다. 사각형 엔티티에는 `Sprite`와 `Transform`이 있습니다.
-
-이 사각형은 컴포넌트로 구성된 ECS 엔티티입니다.
+카메라 엔티티에는 이것이 붙습니다.
 
 ```text
-Entity
-  Sprite
-  Transform
+Camera2d
 ```
 
-`Sprite`는 무엇을 그릴지 제어합니다. `Transform`은 어디에 그릴지 제어합니다.
+사각형 엔티티에는 이것이 붙습니다.
 
-## Plugin은 등록 단위입니다
+```text
+Sprite       무엇을 그릴지
+Transform    어디에 그릴지
+```
 
-플러그인은 앱 등록을 묶습니다.
+렌더링도 ECS 데이터입니다. 2D에서 보이는 무언가를 만들려면 그릴 컴포넌트와 위치 컴포넌트가 필요하고, 월드에는 그것을 볼 카메라가 있어야 합니다.
+
+## Rust로 보면
+
+스프라이트를 생성할 때는 tuple을 씁니다.
 
 ```rust
-struct GamePlugin;
-
-impl Plugin for GamePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_camera);
-    }
-}
+commands.spawn((
+    Sprite::from_color(...),
+    Transform::from_translation(...),
+));
 ```
 
-`build`는 플러그인이 추가될 때 호출됩니다. 매 프레임 동작은 플러그인이 등록한 시스템 안에 둡니다.
+이 tuple은 클래스가 아닙니다. 한 엔티티에 붙일 컴포넌트 값 묶음입니다.
 
-이후 예제들은 플러그인을 사용해 책임을 나눕니다.
+색상과 벡터를 만드는 코드는 타입에 붙은 함수입니다.
 
-```text
-GamePlugin   = 최상위 게임 설정과 실행 순서
-BodyPlugin   = 이동 데이터와 이동 시스템
-PlayerPlugin = 플레이어 생성과 입력 시스템
+```rust
+Color::srgb(0.25, 0.70, 1.0)
+Vec2::splat(80.0)
+Vec3::ZERO
 ```
 
-## 체크포인트
+각 호출은 값을 만들고, Bevy는 그 값을 컴포넌트 데이터로 저장합니다.
 
-직접 실험하면서 `examples/02_spawn_sprite.rs`를 수정하고 질문에 답해 보세요.
+## Bevy로 보면
 
-- `commands.spawn(Camera2d)`를 제거하면 어떻게 되는가?
-- `Vec2::splat(80.0)`를 `Vec2::splat(30.0)`로 바꾸면 어떻게 되는가?
-- `Transform::from_translation(Vec3::ZERO)`를 `Transform::from_translation(Vec3::new(200.0, 0.0, 0.0))`로 바꾸면 어떻게 되는가?
+`DefaultPlugins`는 기본 엔진 기능을 켭니다. 이것이 없으면 일반적인 창, 렌더러, 입력, 에셋 로더, 로그 설정을 요청하지 않은 것입니다.
 
-기대하는 교훈: 렌더링도 ECS 데이터입니다. 보이는 것을 만들려면 올바른 컴포넌트를 가진 엔티티를 spawn합니다.
+`ClearColor`는 리소스입니다. 앱 전체의 배경색은 하나만 있으면 되기 때문입니다.
 
-## 흔한 실수
+```rust
+.insert_resource(ClearColor(Color::srgb(0.08, 0.09, 0.11)))
+```
 
-- 시스템을 `Startup`에 등록해 놓고 매 프레임 실행되리라 기대함.
-- 기존 컴포넌트 값을 바꾸는 데 `Query<&mut T>`가 더 명확한데도 `Commands`를 사용함.
-- `DefaultPlugins`를 잊고 창이나 렌더링이 왜 없는지 고민함.
-- 카메라 없이 sprite를 spawn하고 빈 창만 봄.
+리소스는 타입이 정해진 전역 값입니다. 컴포넌트는 엔티티에 붙습니다.
+
+## 확인
+
+스프라이트 예제를 실행합니다.
+
+```sh
+cargo run --example 02_spawn_sprite
+```
+
+어두운 창 가운데에 파란 사각형이 보여야 합니다.
+
+그다음 하나씩 바꿔 봅니다.
+
+- `commands.spawn(Camera2d);`를 지우면 앱은 실행되지만 사각형이 보이지 않습니다.
+- `Vec2::splat(80.0)`을 `Vec2::splat(30.0)`으로 바꾸면 사각형이 작아집니다.
+- `Vec3::ZERO`를 `Vec3::new(200.0, 0.0, 0.0)`으로 바꾸면 사각형이 오른쪽으로 이동합니다.
+
+## 바꿔보기
+
+두 번째 사각형을 추가해 봅니다.
+
+```rust
+commands.spawn((
+    Sprite::from_color(Color::srgb(1.0, 0.82, 0.25), Vec2::splat(40.0)),
+    Transform::from_xyz(120.0, 0.0, 1.0),
+));
+```
+
+기대 결과: 오른쪽에 작은 노란 사각형이 생깁니다. `z` 값이 더 크므로 파란 사각형과 겹치면 위에 그려집니다.
 
 ---
 
 <div align="center">
 
-[← 이전: Bevy를 위한 Rust](01-rust-for-bevy.md) · [목차](index.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
+[← 이전: Bevy에 필요한 Rust](01-rust-for-bevy.md) · [목차](index.md) · [다음: ECS 기본 →](03-ecs-fundamentals.md)
 
 </div>

@@ -1,6 +1,5 @@
 # 3. ECS Fundamentals
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: The Bevy app model](02-bevy-app-model.md) · [Next: Input and movement →](04-input-and-movement.md)
@@ -9,32 +8,48 @@
 
 ---
 
-ECS means Entity Component System.
+## Outcome
 
-![ECS overview](../../assets/diagrams/ecs-overview.png)
+At the end of this chapter, you can separate entity identity, component data, resources, systems, queries, filters, `Local`, and `Single`. This is the vocabulary used by every later gameplay feature.
 
-This chapter explains the vocabulary you need before the movement examples become interesting.
+![ECS overview diagram](../../assets/diagrams/ecs-overview.png)
 
-## Entity
+## Run
 
-An entity is an ID in the world.
+```sh
+cargo run --example 02_spawn_sprite
+```
 
-Components give an entity position, health, velocity, rendering, or behavior. The entity itself is the ID those components attach to.
+Use the sprite example as the smallest ECS scene: one camera entity and one sprite entity.
 
-In `examples/02_spawn_sprite.rs`, this line creates one entity:
+## Build Step 1: Entity Means ID
+
+An entity is an ID in Bevy's world. It is not a class instance and it does not own methods.
+
+When you write:
 
 ```rust
 commands.spawn((
+    Player,
     Sprite::from_color(Color::srgb(0.25, 0.70, 1.0), Vec2::splat(80.0)),
     Transform::from_translation(Vec3::ZERO),
 ));
 ```
 
-That entity is renderable because it has `Sprite` and placeable because it has `Transform`.
+Bevy creates an entity ID and attaches three components to that ID:
 
-## Component
+```text
+Entity 42
+  Player
+  Sprite
+  Transform
+```
 
-A component is data attached to an entity.
+You usually do not care about the numeric ID unless another component or resource needs to remember a specific entity.
+
+## Build Step 2: Component Means Typed Data
+
+A component is a Rust type attached to an entity:
 
 ```rust
 #[derive(Component)]
@@ -42,17 +57,6 @@ struct Player;
 
 #[derive(Component)]
 struct Velocity(Vec2);
-```
-
-`Player` is a marker component. It identifies an entity as the player.
-
-`Velocity` is a data component. It stores movement direction or speed as a `Vec2`.
-
-The final example uses both marker and data components:
-
-```rust
-#[derive(Component)]
-struct Enemy;
 
 #[derive(Component)]
 struct Body {
@@ -60,130 +64,92 @@ struct Body {
 }
 ```
 
-`Enemy` identifies a role. `Body` stores collision size.
+The type is the key. Each entity can have at most one component of a given type. An entity can have both `Player` and `Body`, but not two separate `Body` components.
 
-## Spawning Component Tuples
+## Build Step 3: System Means Function Over ECS Data
 
-`commands.spawn` accepts a bundle. A tuple of components is a simple bundle:
-
-```rust
-commands.spawn((
-    Player,
-    Velocity(Vec2::ZERO),
-    Transform::from_translation(Vec3::ZERO),
-));
-```
-
-This creates one entity and attaches three components.
-
-Component types define the entity shape. A query asks for entities by component shape rather than by spawn order.
-
-## Query Basics
-
-A query selects entities by component shape:
+A system is a Rust function Bevy can schedule:
 
 ```rust
-Query<&mut Transform, With<Player>>
+fn move_bodies(
+    time: Res<Time>,
+    mut bodies: Query<(&mut Transform, &Velocity), With<Body>>,
+) {
+    for (mut transform, velocity) in &mut bodies {
+        transform.translation += (velocity.0 * time.delta_secs()).extend(0.0);
+    }
+}
 ```
 
-Read it as:
+The function signature is the important part. It says:
 
 ```text
-Find entities with Player.
-From each one, mutably borrow Transform.
+read resource: Time
+match entities: Body + Transform + Velocity
+write component: Transform
+read component: Velocity
 ```
 
-Multiple components can be queried from the same entity:
+## Build Step 4: Query Selects Matching Entities
+
+`Query<&mut Transform, With<Player>>` means:
+
+```text
+for every entity that has Player and Transform,
+give this system mutable access to Transform.
+```
+
+Tuple query data means “get several components from the same entity”:
 
 ```rust
 Query<(&mut Transform, &Velocity), With<Body>>
 ```
 
-Read it as:
-
-```text
-Find entities with Body, Transform, and Velocity.
-Mutate Transform.
-Read Velocity.
-```
-
-The data access is visible:
-
-- `&Transform`: read component data.
-- `&mut Transform`: write component data.
-- `With<Player>`: require a marker/component but do not borrow it.
-- `Without<Enemy>`: exclude entities with a marker/component.
-
-## Query Filters And Conflicts
-
-Filters narrow which entities match:
+Filters narrow the set:
 
 ```rust
-Query<&mut Velocity, With<Player>>
+With<Player>       entity must have Player
+Without<Camera2d>  entity must not have Camera2d
 ```
 
-Only entities that have both `Velocity` and `Player` match. The query mutates `Velocity`; it only uses `Player` as a filter.
+`Without` is often how you make two queries disjoint when both could otherwise touch `Transform`.
 
-Bevy also checks whether system parameters can safely run together. This matters when two queries access the same component and at least one access is mutable.
+## Build Step 5: Resource Means One Global Value
 
-For a camera follow system, this shape is ambiguous:
-
-```rust
-Query<&Transform, With<Player>>
-Query<&mut Transform, With<Camera2d>>
-```
-
-Both queries access `Transform`. Add filters to prove the player set and camera set are separate:
-
-```rust
-Query<&Transform, (With<Player>, Without<Camera2d>)>
-Query<&mut Transform, (With<Camera2d>, Without<Player>)>
-```
-
-The examples mostly avoid this by keeping systems focused.
-
-## Resource, `Res`, And `ResMut`
-
-A resource is one global value stored in the world.
+A resource is one typed value in the world:
 
 ```rust
 #[derive(Resource)]
-struct BodySpeed(f32);
+struct PlayerSpeed(f32);
 ```
 
-Register it:
+Insert it:
 
 ```rust
-app.insert_resource(BodySpeed(220.0));
+.insert_resource(PlayerSpeed(280.0))
 ```
 
 Read it:
 
 ```rust
-fn move_bodies(speed: Res<BodySpeed>) {}
+fn move_player(speed: Res<PlayerSpeed>) {
+    let pixels_per_second = speed.0;
+}
 ```
 
 Mutate it:
 
 ```rust
-fn collect_items(mut score: ResMut<Score>) {
+fn add_score(mut score: ResMut<Score>) {
     score.0 += 1;
 }
 ```
 
-Use a component for per-entity data. Use a resource for one shared value.
+Use resources for global state: score, wave spawner, save progress, loaded asset handles, or configuration.
 
-In this tutorial:
+## Build Step 6: `Local` Means Per-System Memory
 
-- `BodySpeed` is a shared movement speed in `examples/04_velocity_body.rs`.
-- `Score` stores one shared score value in `examples/07_rpg_slice.rs`.
-- `Time`, `ButtonInput<KeyCode>`, and `AssetServer` are Bevy-provided resources.
-
-## `Local`
-
-`Local<T>` stores system-local state. Each system that requests a `Local<T>` gets its own persisted value.
-
-The final example uses it for hit cooldown:
+`Local<T>` stores private state for one system:
 
 ```rust
 fn enemy_hits_player(
@@ -194,71 +160,89 @@ fn enemy_hits_player(
 }
 ```
 
-The `*` dereferences the local wrapper so the inner `f32` can be changed.
+Use `Local` when the state belongs only to that system. Use a resource when multiple systems need to read or write the state.
 
-Use `Local` when the state belongs to one system and stays private to that system.
+## Build Step 7: `Single` Means Exactly One Match
 
-## `Single`
-
-`Single` is a query parameter for cases where exactly one entity should match:
+`Single` is useful when the design requires one matching entity:
 
 ```rust
-fn enemy_ai(
-    player: Single<&Transform, With<Player>>,
-    mut enemies: Query<(&Transform, &mut Velocity), With<Enemy>>,
+fn follow_player(
+    player: Single<&Transform, (With<Player>, Without<Camera2d>)>,
+    mut camera: Single<&mut Transform, With<Camera2d>>,
 ) {
-    let player_position = player.translation.truncate();
+    camera.translation.x = player.translation.x;
+    camera.translation.y = player.translation.y;
 }
 ```
 
-This is a strong contract: there should be exactly one `Player` with a `Transform`. If your game can temporarily have zero or multiple matches, use `Query` with `single()` and handle the `Result`:
+Use `Single` for one player, one main camera, or one HUD text. Use `Query` when there may be zero, one, or many matches.
+
+## Rust Lens
+
+The `for` loop is not Bevy magic:
 
 ```rust
-let Ok(player) = players.single() else {
-    return;
-};
-```
-
-## System Parameters Are The Contract
-
-Look at this system from `examples/07_rpg_slice.rs`:
-
-```rust
-fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
-    for (mut transform, velocity) in &mut bodies {
-        transform.translation += (velocity.0 * time.delta_secs()).extend(0.0);
-    }
+for (mut transform, velocity) in &mut bodies {
 }
 ```
 
-Before reading the body, you know:
+`&mut bodies` asks the query for mutable iteration. The loop variable mirrors the query data tuple. `mut transform` means the local binding can write through the mutable component reference.
+
+Tuple struct access also appears often:
+
+```rust
+velocity.0
+score.0
+```
+
+That `.0` is Rust tuple-field syntax, not Bevy syntax.
+
+## Bevy Lens
+
+ECS is not “one object with all variables.” It is a set of typed data columns. Systems declare which columns they need, and Bevy runs compatible systems in an order that satisfies borrowing and scheduling rules.
+
+The practical design rule:
 
 ```text
-Reads Time.
-Finds entities with Body, Transform, and Velocity.
-Mutates Transform.
-Reads Velocity.
-Leaves entity creation and removal to other systems.
-Leaves keyboard input to other systems.
-Leaves health and score to other systems.
+Marker component     answers “what kind of entity is this?”
+Data component       answers “what facts belong to this entity?”
+Resource             answers “what one global fact exists?”
+System               answers “what changes this frame?”
 ```
 
-That is why Bevy code becomes easier when systems stay small.
+## Check
 
-## Checkpoint
+You can move on when you can explain this signature without looking it up:
 
-For each system below, write down what it reads and writes before looking at the implementation:
+```rust
+fn collect_items(
+    mut commands: Commands,
+    mut score: ResMut<Score>,
+    player: Single<(&Transform, &Body), With<Player>>,
+    collectibles: Query<(Entity, &Transform, &Body), With<Collectible>>,
+) {
+}
+```
 
-- `player_input` in `examples/07_rpg_slice.rs`
-- `collect_items` in `examples/07_rpg_slice.rs`
-- `update_health_bar` in `examples/07_rpg_slice.rs`
+Expected reading:
 
-## Common Mistakes
+```text
+can despawn entities
+can mutate the global score
+expects exactly one player with Transform and Body
+iterates every collectible with Entity, Transform, and Body
+```
 
-- Putting data in a resource when each entity needs its own value.
-- Querying a marker as `&Player` when `With<Player>` would be enough.
-- Forgetting that `Commands` are deferred.
-- Writing one large system that reads input, moves entities, handles collision, updates score, and updates display all at once.
+## Change
+
+In `examples/04_velocity_body.rs`, remove `With<Body>` from the `move_bodies` query:
+
+```rust
+mut bodies: Query<(&mut Transform, &Velocity)>,
+```
+
+Expected result: behavior stays the same in this example because only body entities have `Velocity`. The filter becomes important later when more entities share components.
 
 ---
 

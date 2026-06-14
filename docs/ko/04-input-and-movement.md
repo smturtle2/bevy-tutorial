@@ -1,6 +1,5 @@
 # 4. 입력과 이동
 
-
 <div align="center">
 
 [목차](index.md) · [← 이전: ECS 기본](03-ecs-fundamentals.md) · [다음: 번들, 플러그인, 세트 →](05-bundles-plugins-sets.md)
@@ -9,49 +8,84 @@
 
 ---
 
-이 장은 정적인 sprite를 조작 가능한 엔티티로 바꾼 뒤, 이동을 더 재사용하기 좋은 ECS 형태로 리팩터링합니다.
+## 이 장에서 만들 것
 
-## 둘러보기: `03_player_input`
+이 장이 끝나면 키보드 입력으로 플레이어를 움직이는 방식을 두 가지로 볼 수 있습니다.
 
-실행합니다.
+1. 바로 `Transform`을 수정해서 이동합니다.
+2. 입력은 `Velocity`만 쓰고, 별도의 Body 이동 시스템이 `Transform`을 수정합니다.
+
+두 번째 방식이 재사용 가능한 게임플레이 코드의 시작입니다.
+
+![플레이어 입력은 Velocity를 쓰고, Body 이동은 Transform을 씁니다.](../../assets/screenshots/ch04-velocity-body.png)
+
+## 실행
 
 ```sh
 cargo run --example 03_player_input
+cargo run --example 04_velocity_body
 ```
 
-![직접 입력 예제는 Transform 위치가 바뀌며 플레이어가 이동하는 흐름을 보여줍니다.](../../assets/screenshots/ch03-player-input.png)
+두 예제 모두 WASD나 방향키로 움직입니다.
 
-WASD나 방향키를 사용하세요. 파란 사각형이 움직여야 합니다.
+## 구현 흐름 1: 키보드 상태 읽기
 
-이 예제는 marker component와 resource를 도입합니다.
+입력 리소스는 이렇게 생겼습니다.
 
 ```rust
-#[derive(Component)]
-struct Player;
-
-#[derive(Resource)]
-struct PlayerSpeed(f32);
+Res<ButtonInput<KeyCode>>
 ```
 
-`Player`는 어떤 엔티티가 입력을 받을지 표시합니다. `PlayerSpeed`는 공유 속도 값을 하나 저장합니다.
+직접 이동하는 예제는 키 입력으로 방향 벡터를 만듭니다.
 
 ```rust
-.insert_resource(PlayerSpeed(280.0))
+let mut direction = Vec2::ZERO;
+
+if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
+    direction.x -= 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
+    direction.x += 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) {
+    direction.y -= 1.0;
+}
+if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) {
+    direction.y += 1.0;
+}
 ```
 
-setup 시스템은 한 엔티티에 `Player`, `Sprite`, `Transform`을 붙입니다.
+`pressed`는 키를 누르고 있는 동안 계속 true입니다. 나중에 공격이나 메뉴에서는 `just_pressed`를 씁니다. `just_pressed`는 키가 눌린 바로 그 프레임에만 true입니다.
+
+## 구현 흐름 2: 대각선 속도 보정하기
+
+정규화를 하지 않으면 대각선 이동이 더 빨라집니다. `(1, 1)`의 길이가 `(1, 0)`보다 길기 때문입니다.
 
 ```rust
-commands.spawn((
-    Player,
-    Sprite::from_color(Color::srgb(0.25, 0.70, 1.0), Vec2::splat(80.0)),
-    Transform::from_translation(Vec3::ZERO),
-));
+let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
 ```
 
-## 직접 이동 시스템
+`normalize_or_zero()`는 대각선 속도를 맞추고, 방향이 0일 때도 안전하게 0을 돌려줍니다.
 
-이동 시스템은 입력을 읽고 위치를 직접 수정합니다.
+## 구현 흐름 3: 프레임 독립 이동 만들기
+
+`time.delta_secs()`는 이전 프레임 이후 지난 시간입니다.
+
+```rust
+transform.translation += movement.extend(0.0);
+```
+
+공식은 이렇습니다.
+
+```text
+이번 프레임 이동량 = 방향 * 초당 픽셀 수 * 이번 프레임에 지난 초
+```
+
+그래서 프레임레이트가 달라도 이동 속도가 크게 달라지지 않습니다.
+
+## 구현 흐름 4: `Transform`을 직접 움직이기
+
+직접 이동 버전은 플레이어의 `Transform`을 가져옵니다.
 
 ```rust
 fn move_player(
@@ -60,8 +94,6 @@ fn move_player(
     speed: Res<PlayerSpeed>,
     mut players: Query<&mut Transform, With<Player>>,
 ) {
-    let mut direction = Vec2::ZERO;
-    // input checks...
     let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
 
     for mut transform in &mut players {
@@ -70,119 +102,31 @@ fn move_player(
 }
 ```
 
-시그니처를 시스템 계약으로 읽습니다.
+플레이어 하나만 움직이는 작은 예제에서는 단순하고 좋습니다. 다만 입력 처리와 이동 물리가 한 시스템 안에 섞입니다.
 
-```text
-프레임 시간을 읽습니다.
-키보드 상태를 읽습니다.
-플레이어 속도를 읽습니다.
-Player를 가진 엔티티의 Transform을 수정합니다.
-```
+## 구현 흐름 5: `Velocity` 도입하기
 
-모든 조각이 한 곳에 보이므로 첫 버전으로는 좋습니다.
-
-## 입력 리소스
-
-`ButtonInput<KeyCode>`는 Bevy 리소스입니다. 현재 프레임의 키보드 버튼 상태를 저장합니다.
+리팩터링 버전은 이동 데이터를 따로 둡니다.
 
 ```rust
-keyboard.pressed(KeyCode::ArrowLeft)
-keyboard.pressed(KeyCode::KeyA)
-```
-
-`pressed`는 키를 누르고 있는 동안 true입니다. Bevy에는 "just pressed" 같은 edge-style 검사도 있지만, 누르는 동안 계속 이동하는 경우에는 `pressed`를 써야 합니다.
-
-## 방향 정규화
-
-시스템은 방향 벡터를 누적합니다.
-
-```rust
-let mut direction = Vec2::ZERO;
-direction.x -= 1.0;
-direction.y += 1.0;
-```
-
-대각선 입력은 `(-1.0, 1.0)` 같은 벡터를 만들고, 이것은 수평 벡터보다 깁니다. 속도를 적용하기 전에 정규화합니다.
-
-```rust
-direction.normalize_or_zero()
-```
-
-`normalize_or_zero`는 아무 키도 누르지 않아 벡터가 0일 때 잘못된 수학 값을 피합니다.
-
-## 프레임 독립 이동
-
-이동에는 delta time을 씁니다.
-
-```rust
-let movement = direction.normalize_or_zero() * speed.0 * time.delta_secs();
-```
-
-`time.delta_secs()`는 이전 프레임의 길이를 초 단위로 반환합니다. 이것을 곱하면 이동이 대략 "프레임당 단위"가 아니라 "초당 단위"가 됩니다.
-
-`Transform.translation`은 `Vec3`이고 movement는 `Vec2`이므로 코드는 z 값을 붙입니다.
-
-```rust
-transform.translation += movement.extend(0.0);
-```
-
-새 `z` 값은 `0.0`입니다.
-
-## 왜 리팩터링하는가?
-
-직접 이동 시스템은 키보드 입력과 위치 변경을 결합합니다.
-
-```text
-keyboard -> Transform
-```
-
-플레이어 사각형 하나에는 괜찮습니다. 하지만 적, knockback, scripted movement, physics도 엔티티를 움직여야 하면 제한이 됩니다.
-
-다음 예제는 의도와 실제 움직임을 나눕니다.
-
-```text
-입력 시스템 -> Velocity를 씁니다
-이동 시스템 -> Velocity를 읽고 Transform을 씁니다
-```
-
-## 둘러보기: `04_velocity_body`
-
-실행합니다.
-
-```sh
-cargo run --example 04_velocity_body
-```
-
-![Velocity 리팩터링 예제는 입력 시스템이 Velocity를 쓰고 이동 시스템이 Transform을 쓰는 구조를 보여줍니다.](../../assets/screenshots/ch04-velocity-body.png)
-
-조작감은 비슷하지만 데이터 모델이 다릅니다.
-
-```rust
-#[derive(Component)]
-struct Body;
-
 #[derive(Component)]
 struct Velocity(Vec2);
 ```
 
-`Body`는 movement system으로 이동 가능한 엔티티를 표시합니다. `Velocity`는 이동 방향을 저장합니다.
-
-입력 시스템은 `Velocity`를 씁니다.
+입력 시스템은 이동 의도만 `Velocity`에 기록합니다.
 
 ```rust
 fn handle_player_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
-    // calculate direction...
-
     for mut velocity in &mut players {
         velocity.0 = direction.normalize_or_zero();
     }
 }
 ```
 
-이동 시스템은 `Velocity`를 읽고 `Transform`을 씁니다.
+이동 시스템은 속도를 적용합니다.
 
 ```rust
 fn move_bodies(
@@ -198,43 +142,84 @@ fn move_bodies(
 }
 ```
 
-이것이 이 튜토리얼의 첫 큰 ECS 설계 단계입니다. 시스템은 서로를 직접 호출하는 대신 컴포넌트 데이터를 통해 소통합니다.
+이제 적, 발사체, NPC도 `Body`, `Velocity`, `Transform`을 가지면 같은 `move_bodies` 시스템으로 움직일 수 있습니다.
 
-## `.chain()`으로 순서 지정
+## 구현 흐름 6: `.chain()`으로 순서 정하기
 
-`04_velocity_body`는 시스템을 이렇게 등록합니다.
+이 구조에서는 입력이 이동보다 먼저 실행되어야 합니다.
 
 ```rust
-.add_systems(Update, (handle_player_input, move_bodies).chain())
+.add_systems(
+    Update,
+    (handle_player_input, move_bodies, capture_velocity_body_pose).chain(),
+)
 ```
 
-순서가 중요합니다.
+`.chain()`은 tuple 안의 시스템을 순서대로 실행하게 만듭니다.
+
+순서를 정하지 않으면 Bevy는 가능한 순서로 시스템을 실행할 수 있습니다. 병렬 실행에는 좋지만, 한 시스템이 쓴 값을 같은 프레임의 다른 시스템이 읽어야 한다면 순서를 명시해야 합니다.
+
+## Rust로 보면
+
+이 줄은 Rust 관점에서 세 가지를 합니다.
+
+```rust
+for mut transform in &mut players {
+```
 
 ```text
-handle_player_input -> Velocity를 씁니다
-move_bodies         -> Velocity를 읽습니다
+&mut players       쿼리를 수정 가능하게 빌려 순회
+transform          매칭된 Transform을 가리키는 지역 바인딩
+mut transform      mutable reference를 통해 값을 쓸 수 있음
 ```
 
-`.chain()`은 Bevy에게 이 순서로 실행하라고 알려줍니다. 순서를 지정하지 않으면 Bevy 스케줄러는 호환 가능한 시스템을 자신이 선택한 순서로 실행할 수 있습니다.
+튜플 반복문은 쿼리 데이터와 모양이 같습니다.
 
-시스템이 서로 다른 플러그인에 살게 되면 `SystemSet`이 같은 ordering 계약을 플러그인 경계 밖으로 표현합니다.
+```rust
+for (mut transform, velocity) in &mut bodies {
+```
 
-## 연습
+첫 번째 값은 `&mut Transform`을 요청했기 때문에 수정 가능하고, 두 번째 값은 `&Velocity`를 요청했기 때문에 읽기 전용입니다.
 
-로컬 실험에서:
+## Bevy로 보면
 
-1. `BodySpeed(220.0)`를 `BodySpeed(80.0)`로 바꿔 보세요.
-2. `.chain()`을 제거하고 이동이 여전히 맞아 보이는지 관찰하세요.
-3. 두 번째 `PlayerBundle::new()`를 spawn하고 `Query<&mut Velocity, With<Player>>`가 무엇을 할지 생각해 보세요.
+리팩터링의 핵심은 책임 분리입니다.
 
-첫 질문은 "움직이는가?"입니다. 더 강한 ECS 질문은 "각 시스템이 어떤 엔티티에 영향을 주는가?"입니다.
+```text
+Player input system     keyboard -> Velocity
+Body movement system    Velocity + Time -> Transform
+```
 
-## 흔한 실수
+그래서 시스템 이름을 `update_players`처럼 뭉뚱그리면 금방 흐려집니다. 시스템 이름은 맡은 동작을 말해야 합니다. `handle_player_input`, `move_bodies`, `enemy_ai`, `collect_items`, `update_hud_text`처럼요.
 
-- 프레임 스케일이 적용된 이동량을 `Velocity`에 저장한 뒤 나중에 delta time을 다시 곱함.
-- 대각선 입력을 정규화하지 않음.
-- `move_bodies`를 `With<Player>`로 필터링해서 적이나 다른 body가 재사용하지 못하게 함.
-- `.chain()`, 명시적 ordering, set 없이 시스템이 등록 순서대로 실행된다고 가정함.
+## 확인
+
+두 예제를 실행합니다.
+
+```sh
+cargo run --example 03_player_input
+cargo run --example 04_velocity_body
+```
+
+기대 결과:
+
+- 두 예제 모두 WASD/방향키로 움직입니다.
+- 대각선 이동이 직선 이동보다 눈에 띄게 빠르지 않습니다.
+- `04_velocity_body`에서는 입력 시스템이 `Transform`을 직접 건드리지 않는데도 플레이어가 움직입니다.
+
+## 바꿔보기
+
+`examples/04_velocity_body.rs`에서 이 값을 바꿔 봅니다.
+
+```rust
+.insert_resource(BodySpeed(220.0))
+```
+
+```rust
+.insert_resource(BodySpeed(80.0))
+```
+
+기대 결과: 입력 시스템을 바꾸지 않아도 플레이어가 느려집니다. 속도 책임이 키보드 입력이 아니라 Body 이동 쪽에 있다는 뜻입니다.
 
 ---
 

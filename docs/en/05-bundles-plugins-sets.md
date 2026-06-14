@@ -1,6 +1,5 @@
 # 5. Bundles, Plugins, And Sets
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: Input and movement](04-input-and-movement.md) · [Next: Assets, camera, and UI →](06-assets-camera-ui.md)
@@ -9,33 +8,23 @@
 
 ---
 
-Run:
+## Outcome
+
+At the end of this chapter, spawn data, feature registration, and frame order are no longer mixed together in `main`.
+
+![GamePlugin registers BodyPlugin and PlayerPlugin, then orders Input before Movement.](../../assets/screenshots/ch05-plugins-sets.png)
+
+## Run
 
 ```sh
 cargo run --example 05_plugins_sets
 ```
 
-![The plugin and system-set example renders the same player behavior with GamePlugin, PlayerPlugin, BodyPlugin, and ordered sets visible.](../../assets/screenshots/ch05-plugins-sets.png)
+The visible behavior is still a movable player. The important change is the source-code structure.
 
-This example keeps the `04_velocity_body` behavior and reorganizes the code around spawn bundles, plugins, and named system sets. Familiar behavior makes the new structure easier to inspect.
+## Build Step 1: Bundle Repeated Spawn Data
 
-## Why Bundles
-
-Tuple spawning is fine for tiny examples:
-
-```rust
-commands.spawn((Player, Velocity(Vec2::ZERO), Transform::default()));
-```
-
-As examples grow, repeated spawn tuples become hard to audit. This project uses a stricter rule:
-
-```text
-Domain entities are spawned through Bundle + impl new().
-```
-
-That keeps spawn rules in one place.
-
-## BodyBundle
+A bundle is a group of components used together:
 
 ```rust
 #[derive(Bundle)]
@@ -44,7 +33,11 @@ struct BodyBundle {
     velocity: Velocity,
     transform: Transform,
 }
+```
 
+The constructor defines the spawn defaults:
+
+```rust
 impl BodyBundle {
     fn new(position: Vec3) -> Self {
         Self {
@@ -56,23 +49,11 @@ impl BodyBundle {
 }
 ```
 
-`BodyBundle` is a spawn-time component package.
+Now spawning a body does not require every call site to remember the same three components.
 
-After spawn, the entity simply has:
+## Build Step 2: Compose Bundles
 
-```text
-Body
-Velocity
-Transform
-```
-
-Queries ask for the components that came out of the bundle:
-
-```rust
-Query<(&mut Transform, &Velocity), With<Body>>
-```
-
-## Nested Bundles
+Bundles can contain other bundles:
 
 ```rust
 #[derive(Bundle)]
@@ -83,58 +64,74 @@ struct PlayerBundle {
 }
 ```
 
-Nested bundles flatten into components on the entity:
+The player constructor becomes:
 
-```text
-Player
-Body
-Velocity
-Transform
-Sprite
+```rust
+impl PlayerBundle {
+    fn new() -> Self {
+        Self {
+            player: Player,
+            body: BodyBundle::new(Vec3::ZERO),
+            sprite: Sprite::from_color(Color::srgb(0.25, 0.70, 1.0), Vec2::splat(80.0)),
+        }
+    }
+}
 ```
 
-Flattening is why `move_bodies` can move the player. At runtime, the player entity contains `Body`, `Velocity`, and `Transform`.
+Spawning is now explicit and short:
 
-## Plugins
+```rust
+commands.spawn(PlayerBundle::new());
+```
 
-Plugins are registration boundaries:
+This is the clean Rust way to solve the “I have to declare the same spawn variables in two places” feeling. The component types stay separate, but the spawn recipe is centralized.
+
+## Build Step 3: Use Plugins As Registration Units
+
+A plugin owns registration for one feature area:
+
+```rust
+struct BodyPlugin;
+
+impl Plugin for BodyPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(BodySpeed(220.0))
+            .add_systems(Update, move_bodies.in_set(GameSet::Movement));
+    }
+}
+```
+
+The player plugin owns player setup and input:
 
 ```rust
 struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_player);
+        app.add_systems(Startup, spawn_player)
+            .add_systems(Update, handle_player_input.in_set(GameSet::Input));
     }
 }
 ```
 
-The plugin runs during app construction and registers things with the app.
-
-`examples/05_plugins_sets.rs` has three plugins:
-
-```text
-GamePlugin   inserts clear color, configures order, adds feature plugins
-BodyPlugin   inserts BodySpeed and registers move_bodies
-PlayerPlugin registers player spawn and player input
-```
-
-`main` stays small:
+Plugins can add other plugins:
 
 ```rust
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(GamePlugin)
-        .run();
+struct GamePlugin;
+
+impl Plugin for GamePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(BodyPlugin)
+            .add_plugins(PlayerPlugin);
+    }
 }
 ```
 
-This is the main reason plugins matter: they keep feature registration out of `main` as the project grows.
+That is normal Bevy structure. A top-level game plugin can assemble feature plugins.
 
-## SystemSet
+## Build Step 4: Name Frame Phases With `SystemSet`
 
-When systems live in different plugins, sets express order across those plugin boundaries.
+The example defines frame phases:
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -144,45 +141,83 @@ enum GameSet {
 }
 ```
 
-Configure order:
+Then it orders those sets:
 
 ```rust
-app.configure_sets(Update, (GameSet::Input, GameSet::Movement).chain());
+.configure_sets(Update, (GameSet::Input, GameSet::Movement).chain())
 ```
 
-Put systems in the correct set:
+Individual systems join a set:
 
 ```rust
 handle_player_input.in_set(GameSet::Input)
 move_bodies.in_set(GameSet::Movement)
 ```
 
-Mental model:
+The result is readable frame order:
 
 ```text
-Update
-  Input
-    handle_player_input
-  Movement
-    move_bodies
+Input -> Movement
 ```
 
-Use `SystemSet` when order matters across plugins.
+## Rust Lens
 
-## Exercise
+`impl Plugin for BodyPlugin` means `BodyPlugin` implements Bevy's `Plugin` trait:
 
-Try these changes in a local experiment:
+```rust
+impl Plugin for BodyPlugin {
+    fn build(&self, app: &mut App) {
+    }
+}
+```
 
-1. Move `move_bodies` into `GameSet::Input` and think about what ordering contract you just broke.
-2. Add a second system to `GameSet::Movement` that prints body positions.
-3. Remove `.add_plugins(PlayerPlugin)` from `GamePlugin` and confirm the app still opens but no player spawns.
+`&self` borrows the plugin value. `&mut App` gives the build method mutable access to the app registration object.
 
-## Common Mistakes
+`Self` in bundle constructors means the type currently being implemented:
 
-- Querying for a bundle type after spawn. Query the flattened components instead.
-- Putting every system in one plugin even after feature boundaries are clear.
-- Assuming plugin add order is enough for frame ordering. Use sets when update order matters.
-- Making bundle fields `pub` without a module boundary that needs them.
+```rust
+fn new() -> Self
+```
+
+For `impl PlayerBundle`, `Self` means `PlayerBundle`.
+
+## Bevy Lens
+
+Use these boundaries:
+
+```text
+Component   data type attached to entities
+Bundle      reusable spawn recipe
+System      behavior
+Plugin      registration boundary
+SystemSet   execution phase
+```
+
+This is the point where Bevy stops feeling like one long `App` chain. The chain still exists, but each plugin owns a focused part of it.
+
+## Check
+
+Run:
+
+```sh
+cargo run --example 05_plugins_sets
+```
+
+Expected result:
+
+- The player moves.
+- `GamePlugin` adds `BodyPlugin` and `PlayerPlugin`.
+- `GameSet::Input` runs before `GameSet::Movement`.
+
+## Change
+
+Swap the set order:
+
+```rust
+.configure_sets(Update, (GameSet::Movement, GameSet::Input).chain())
+```
+
+Expected result: movement uses the previous frame's velocity, so controls can feel one frame late. Put the order back after observing it.
 
 ---
 

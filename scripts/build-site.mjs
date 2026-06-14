@@ -15,23 +15,23 @@ const base = normalizeBase(process.env.PAGES_BASE ?? "/bevy-tutorial/");
 
 const chapters = [
   chapter(0, "00-project-setup", "Project Setup", "프로젝트 설정", "Foundations", "준비", "cargo check", "Install Rust, create the Bevy project, and verify the toolchain.", "Rust와 Bevy 프로젝트를 준비하고 빌드 가능한 상태를 확인합니다."),
-  chapter(1, "01-rust-for-bevy", "Rust For Bevy", "Bevy를 위한 Rust", "Foundations", "기초", "cargo run --example 01_empty_app", "Learn the Rust syntax that appears immediately in Bevy systems.", "Bevy 시스템을 읽기 위해 바로 필요한 Rust 문법을 배웁니다."),
-  chapter(2, "02-bevy-app-model", "The Bevy App Model", "Bevy 앱 모델", "Foundations", "기초", "cargo run --example 01_empty_app", "Read App, plugins, startup systems, update systems, and insertion points.", "App, 플러그인, startup/update 시스템, insert 흐름을 읽습니다."),
+  chapter(1, "01-rust-for-bevy", "Rust For Bevy", "Bevy에 필요한 Rust", "Foundations", "기초", "cargo run --example 01_empty_app", "Learn the Rust syntax that appears immediately in Bevy systems.", "Bevy 시스템을 읽기 위해 바로 필요한 Rust 문법을 배웁니다."),
+  chapter(2, "02-bevy-app-model", "The Bevy App Model", "Bevy 앱 모델", "Foundations", "기초", "cargo run --example 01_empty_app", "Read App, plugins, startup systems, update systems, and insertion points.", "App 설정과 플러그인, startup/update 시스템, 리소스 삽입 흐름을 읽습니다."),
   chapter(3, "03-ecs-fundamentals", "ECS Fundamentals", "ECS 기본", "ECS", "ECS", "cargo run --example 02_spawn_sprite", "Separate entity identity, component data, resources, systems, and queries.", "엔티티, 컴포넌트, 리소스, 시스템, 쿼리의 책임을 분리합니다."),
   chapter(4, "04-input-and-movement", "Input And Movement", "입력과 이동", "ECS", "ECS", "cargo run --example 03_player_input", "Turn keyboard input into velocity and transform changes.", "키보드 입력을 속도와 위치 변경으로 연결합니다."),
   chapter(5, "05-bundles-plugins-sets", "Bundles, Plugins, And Sets", "번들, 플러그인, 세트", "Architecture", "구조", "cargo run --example 05_plugins_sets", "Group spawn data, feature registration, and execution order.", "생성 데이터, 기능 등록, 실행 순서를 책임별로 묶습니다."),
   chapter(6, "06-assets-camera-ui", "Assets, Camera, And UI", "에셋, 카메라, UI", "Presentation", "표현", "cargo run --example 06_assets_camera_ui", "Load sprites, add cameras, and place world/UI text.", "스프라이트를 로드하고 카메라와 월드/UI 텍스트를 배치합니다."),
-  chapter(7, "07-rpg-slice", "RPG Foundation Slice", "RPG 기초 조각", "Playable Slice", "플레이 가능한 조각", "cargo run --example 07_rpg_slice", "Combine movement, collision, AI, collection, score, and HUD.", "이동, 충돌, AI, 수집, 점수, HUD를 하나의 루프로 묶습니다."),
+  chapter(7, "07-rpg-slice", "RPG Foundation Slice", "RPG 기초 예제", "Playable Slice", "플레이 가능한 예제", "cargo run --example 07_rpg_slice", "Combine movement, collision, AI, collection, score, and HUD.", "이동, 충돌, AI, 수집, 점수, HUD를 하나의 루프로 묶습니다."),
   chapter(8, "08-smooth-camera-follow", "Smooth Camera Follow", "부드러운 카메라 추적", "RPG Features", "RPG 기능", "cargo run --example 08_smooth_camera_follow", "Follow the player smoothly without snapping the camera every frame.", "프레임마다 튀지 않는 부드러운 카메라 추적을 만듭니다."),
   chapter(9, "09-enemy-waves", "Enemy Waves", "적 웨이브", "RPG Features", "RPG 기능", "cargo run --example 09_enemy_waves", "Spawn enemies over time with explicit wave state.", "명시적인 웨이브 상태로 적을 시간에 따라 생성합니다."),
-  chapter(10, "10-attack-hitbox", "Attack Hitboxes", "공격 히트박스", "RPG Features", "RPG 기능", "cargo run --example 10_attack_hitbox", "Represent attacks as short-lived hitbox entities.", "공격을 짧게 살아 있는 hitbox 엔티티로 표현합니다."),
+  chapter(10, "10-attack-hitbox", "Attack Hitboxes", "공격 히트박스", "RPG Features", "RPG 기능", "cargo run --example 10_attack_hitbox", "Represent attacks as short-lived hitbox entities.", "공격을 짧게 살아 있는 히트박스 엔티티로 표현합니다."),
   chapter(11, "11-sprite-assets", "Sprite Assets", "스프라이트 에셋", "RPG Features", "RPG 기능", "cargo run --example 11_sprite_assets", "Replace colored shapes with real tutorial sprites.", "색상 도형을 실제 튜토리얼 스프라이트로 바꿉니다."),
   chapter(12, "12-screen-space-ui", "Screen-Space UI", "화면 고정 UI", "RPG Features", "RPG 기능", "cargo run --example 12_screen_space_ui", "Keep HUD elements fixed to the screen instead of the world.", "HUD 요소를 월드가 아니라 화면에 고정합니다."),
   chapter(13, "13-animation-state", "Animation State", "애니메이션 상태", "RPG Features", "RPG 기능", "cargo run --example 13_animation_state", "Drive sprite frames from movement and gameplay state.", "이동과 게임플레이 상태로 스프라이트 프레임을 제어합니다."),
-  chapter(14, "14-handmade-map-geometry", "Handmade Map Geometry", "직접 만든 맵 지오메트리", "RPG Features", "RPG 기능", "cargo run --example 14_handmade_map_geometry", "Build a small map from explicit geometry and collision bounds.", "명시적인 지오메트리와 충돌 범위로 작은 맵을 만듭니다."),
-  chapter(15, "15-game-states", "Game States", "게임 상태", "RPG Features", "RPG 기능", "cargo run --example 15_game_states", "Model menu, playing, paused, and game over as Bevy states.", "메뉴, 플레이, 일시정지, 게임 오버를 Bevy 상태로 모델링합니다."),
+  chapter(14, "14-handmade-map-geometry", "Handmade Map Geometry", "직접 만든 맵 구조", "RPG Features", "RPG 기능", "cargo run --example 14_handmade_map_geometry", "Build a small map from explicit geometry and collision bounds.", "직접 작성한 맵 구조와 충돌 범위로 작은 맵을 만듭니다."),
+  chapter(15, "15-game-states", "Game States", "게임 상태", "RPG Features", "RPG 기능", "cargo run --example 15_game_states", "Model menu, playing, paused, and game over as Bevy states.", "메뉴, 플레이 중, 일시정지, 게임 오버를 Bevy 상태로 모델링합니다."),
   chapter(16, "16-save-load-progress", "Save And Load Progress", "진행도 저장과 불러오기", "RPG Features", "RPG 기능", "cargo run --example 16_save_load_progress", "Persist explicit progress data instead of serializing the whole world.", "전체 월드가 아니라 명시적인 진행 데이터를 저장합니다."),
-  chapter(17, "17-complete-rpg-slice", "Complete RPG Slice", "완성된 RPG 조각", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the tutorial systems together into a complete small RPG slice.", "튜토리얼 시스템을 합쳐 완성된 작은 RPG 조각을 만듭니다."),
+  chapter(17, "17-complete-rpg-slice", "Complete RPG Slice", "완성된 RPG 예제", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the tutorial systems together into a complete small RPG slice.", "튜토리얼 시스템을 합쳐 완성된 작은 RPG 예제를 만듭니다."),
 ];
 
 const chapterThumbnails = {
@@ -100,7 +100,7 @@ const copy = {
     start: "학습 시작",
     viewExamples: "예제 보기",
     heroTitle: "<strong>Rust</strong> + Bevy 튜토리얼",
-    heroLead: "플레이 가능한 Bevy RPG 조각을 만들면서 Rust를 배웁니다. 실용 코드, 명확한 계약, 실행 가능한 예제를 원하는 학습자를 위한 커뮤니티 제작 튜토리얼입니다.",
+    heroLead: "플레이할 수 있는 작은 Bevy RPG를 만들면서 Rust를 배웁니다. 직접 실행해 볼 수 있는 코드와 분명한 설계를 원하는 학습자를 위한 커뮤니티 제작 튜토리얼입니다.",
     heroPoints: [
       "Bevy 코드에 필요한 Rust 기초를 등장 순서에 맞춰 설명합니다.",
       "핵심 RPG 시스템마다 장과 실행 가능한 예제가 있습니다.",
@@ -239,10 +239,10 @@ function renderHome(lang, assetTags) {
   const t = copy[lang];
   const heroImage = `${base}assets/screenshots/ch17-complete-rpg-gameplay.png`;
   const features = [
-    [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만드는 학습", lang === "en" ? "Build an RPG step by step with complete examples." : "완성 예제로 RPG를 단계별로 만듭니다."],
+    [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만들며 배우기", lang === "en" ? "Build an RPG step by step with complete examples." : "완성된 예제를 따라 RPG를 단계별로 만듭니다."],
     [asset("enemy.png"), lang === "en" ? "Bevy patterns" : "Bevy 패턴", lang === "en" ? "Learn ECS, plugins, states, assets, UI, and saving." : "ECS, 플러그인, 상태, 에셋, UI, 저장을 배웁니다."],
     [asset("slash.png"), lang === "en" ? "Rust in context" : "맥락 속 Rust", lang === "en" ? "Rust concepts are tied directly to Bevy code." : "Rust 개념을 Bevy 코드와 바로 연결합니다."],
-    [asset("gem.png"), lang === "en" ? "Community-shaped" : "커뮤니티 문서", lang === "en" ? "Practical, inspectable, and open to corrections." : "실용적이고 검토 가능하며 개선을 받습니다."],
+    [asset("gem.png"), lang === "en" ? "Community-shaped" : "커뮤니티 문서", lang === "en" ? "Practical, inspectable, and open to corrections." : "실용적인 예제를 공개하고, 검토와 개선 제안을 받습니다."],
   ];
 
   const body = `

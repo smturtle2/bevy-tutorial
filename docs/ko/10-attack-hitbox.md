@@ -1,6 +1,5 @@
 # 10. 공격 히트박스
 
-
 <div align="center">
 
 [목차](index.md) · [← 이전: 적 웨이브](09-enemy-waves.md) · [다음: 스프라이트 에셋 →](11-sprite-assets.md)
@@ -9,59 +8,214 @@
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 Space를 눌렀을 때 플레이어 앞에 짧게 살아 있는 공격 히트박스가 생깁니다. 히트박스는 충돌 데이터, 베기 스프라이트, 피해량, 타이머를 가진 평범한 엔티티입니다.
+
+![플레이어 앞에 베기 스프라이트와 공격 히트박스가 나타납니다.](../../assets/screenshots/ch10-attack-hitbox.png)
+
+## 실행
 
 ```sh
 cargo run --example 10_attack_hitbox
 ```
 
-![공격 히트박스 예제는 플레이어, 적, slash 스프라이트, 플레이어 앞에 생성된 반투명 AttackHitbox Body를 보여줍니다.](../../assets/screenshots/ch10-attack-hitbox.png)
+WASD/방향키로 움직이고, Space로 공격합니다.
 
-이 장의 계약은 공격을 즉시 데미지 함수로 처리하지 않고, 짧게 존재하는 히트박스 엔티티로 표현하는 것입니다. 공격도 ECS 데이터가 되면 시각 효과, 충돌, 수명, 데미지를 분리해서 다룰 수 있습니다.
+## 구현 흐름 1: 바라보는 방향 저장하기
 
-## 핵심 ECS 계약
+플레이어는 마지막 이동 방향을 기억해야 합니다.
 
-- `Facing(Vec2)`: 플레이어가 마지막으로 바라본 방향입니다.
-- `AttackHitbox { lifetime, damage }`: 공격 판정의 수명과 데미지입니다.
-- `Health { current }`: 적의 생존 상태입니다.
-- `HitCount`: 성공한 타격 수를 저장하는 리소스입니다.
-- `Body { half_size }`: 플레이어, 적, 히트박스가 공유하는 AABB 크기입니다.
+```rust
+#[derive(Component)]
+struct Facing(Vec2);
+```
 
-`spawn_attack_hitbox`는 Space가 눌린 프레임에만 히트박스를 생성합니다. `attack_hits_enemies`는 히트박스와 적의 `Body`를 비교해 겹치면 체력을 줄이고, 필요하면 적과 히트박스를 제거합니다.
+입력 시스템은 플레이어가 움직일 때만 `Facing`을 갱신합니다.
 
-## Rust 포인트
+```rust
+let normalized = direction.normalize_or_zero();
+velocity.0 = normalized * PLAYER_SPEED;
 
-`Facing(Vec2)`와 `Velocity(Vec2)`는 튜플 struct입니다. 같은 `Vec2`라도 의미가 다르면 다른 타입으로 감싸는 편이 안전합니다. 시스템 시그니처에서 `&mut Facing`과 `&mut Velocity`가 분리되므로 읽는 사람도 의도를 바로 압니다.
+if normalized != Vec2::ZERO {
+    facing.0 = normalized;
+}
+```
 
-`atan2`로 방향 벡터를 회전 각도로 바꾸고 `Quat::from_rotation_z(angle)`에 넣습니다. 2D에서도 Bevy의 `Transform.rotation`은 3D 회전 타입인 `Quat`를 사용합니다.
+이렇게 하면 멈춘 상태에서도 마지막으로 바라보던 방향으로 공격할 수 있습니다.
 
-## Bevy 포인트
+## 구현 흐름 2: Hitbox 컴포넌트 정의하기
 
-`Commands`로 엔티티를 `despawn()`하면 제거 명령이 큐에 쌓이고 스케줄 경계에서 적용됩니다. 이 예제는 히트박스가 무언가를 맞췄는지 `hit_anything`에 기록한 뒤 루프 끝에서 제거 명령을 냅니다.
+공격은 게임플레이 데이터입니다.
 
-충돌 함수 `overlaps`는 `Transform` 위치와 `Body.half_size`로 축 정렬 박스를 비교합니다. 초반 액션 RPG 판정에는 이 명시적인 충돌 계약이 디버그하기 쉽습니다.
+```rust
+#[derive(Component)]
+struct AttackHitbox {
+    lifetime: Timer,
+    damage: i32,
+}
+```
 
-## 프레임 흐름
+히트박스는 여기에 `Body`, `Sprite`, `Transform`도 같이 가집니다. 특별한 충돌 모드가 아니라 일반 엔티티입니다.
 
-1. 입력이 플레이어 `Velocity`와 `Facing`을 갱신합니다.
-2. Space 입력이 있으면 바라보는 방향 앞에 히트박스를 스폰합니다.
-3. 이동 시스템이 속도를 위치에 반영합니다.
-4. 히트박스가 적과 겹치면 데미지를 주고 타격 수를 올립니다.
-5. 수명이 끝난 히트박스를 제거합니다.
-6. UI가 타격 수를 표시합니다.
+## 구현 흐름 3: `just_pressed`로 한 번만 생성하기
 
-## 흔한 실수
+공격 시스템은 매 프레임 실행되지만, 키를 누른 프레임에만 동작합니다.
 
-- 정지 중에도 공격 방향이 필요합니다. 입력이 없을 때 `Facing`을 `Vec2::ZERO`로 덮어쓰지 마세요.
-- `just_pressed` 대신 `pressed`를 쓰면 Space를 누르고 있는 동안 매 프레임 히트박스가 생깁니다.
-- 히트박스에 `Body`를 붙이지 않으면 충돌 시스템이 찾을 수 없습니다.
-- `AttackHitbox` 수명 제거를 빼면 보이지 않는 판정이 계속 남습니다.
+```rust
+if !keyboard.just_pressed(KeyCode::Space) {
+    return;
+}
+```
 
-## 작게 바꿔보기
+그다음 플레이어 앞에 히트박스 위치를 잡습니다.
 
-- `AttackHitbox`의 수명을 늘려 판정이 오래 남게 해보세요.
-- `damage`를 2로 바꿔 적이 한 번에 죽는지 확인하세요.
-- 히트박스를 첫 적에게만 맞게 할지, 여러 적을 관통하게 할지 규칙을 바꿔보세요.
+```rust
+let (player_transform, facing) = *player;
+let position = player_transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
+let angle = facing.0.y.atan2(facing.0.x);
+```
+
+`atan2`는 방향 벡터를 베기 스프라이트의 회전 각도로 바꿉니다.
+
+## 구현 흐름 4: Hitbox 엔티티 생성하기
+
+실제 스폰은 이렇습니다.
+
+```rust
+commands.spawn((
+    AttackHitbox {
+        lifetime: Timer::from_seconds(0.14, TimerMode::Once),
+        damage: 1,
+    },
+    Body {
+        half_size: HITBOX_SIZE / 2.0,
+    },
+    Sprite::from_image(asset_server.load("slash.png")),
+    Transform {
+        translation: position,
+        rotation: Quat::from_rotation_z(angle),
+        ..default()
+    },
+));
+```
+
+짧은 수명이 중요합니다. 히트박스는 영구적인 무기 오브젝트가 아니라, 한 번의 공격에서 피해 판정이 살아 있는 구간입니다.
+
+## 구현 흐름 5: 피해 적용하기
+
+피해 시스템은 모든 히트박스와 모든 적을 비교합니다.
+
+```rust
+for (hitbox_entity, hitbox_transform, hitbox_body, hitbox) in &hitboxes {
+    let mut hit_anything = false;
+
+    for (enemy_entity, enemy_transform, enemy_body, mut health) in &mut enemies {
+        if overlaps(hitbox_transform, hitbox_body, enemy_transform, enemy_body) {
+            health.current -= hitbox.damage;
+            hit_count.0 += 1;
+            hit_anything = true;
+
+            if health.current <= 0 {
+                commands.entity(enemy_entity).despawn();
+            }
+        }
+    }
+
+    if hit_anything {
+        commands.entity(hitbox_entity).despawn();
+    }
+}
+```
+
+무언가를 맞춘 히트박스는 사라집니다. 체력이 0 이하가 된 적도 사라집니다.
+
+## 구현 흐름 6: 빗나간 공격 제거하기
+
+아무것도 맞히지 못한 히트박스는 타이머로 제거합니다.
+
+```rust
+fn expire_attack_hitboxes(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut hitboxes: Query<(Entity, &mut AttackHitbox)>,
+) {
+    for (entity, mut hitbox) in &mut hitboxes {
+        hitbox.lifetime.tick(time.delta());
+
+        if hitbox.lifetime.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+```
+
+이렇게 해야 월드에 오래된 히트박스가 쌓이지 않습니다.
+
+## Rust로 보면
+
+피해 시스템에는 `Vec::new()`가 나옵니다.
+
+```rust
+let mut defeated_enemies = Vec::new();
+```
+
+이번 시스템 실행 중 이미 쓰러진 적을 기억해서, 같은 프레임의 다른 히트박스가 같은 적을 또 처리하지 않게 합니다.
+
+`..default()`는 나머지 필드를 기본값으로 채웁니다.
+
+```rust
+Transform {
+    translation: position,
+    rotation: Quat::from_rotation_z(angle),
+    ..default()
+}
+```
+
+필요한 필드만 직접 정하고, 나머지는 기본 `Transform`을 쓰는 방식입니다.
+
+## Bevy로 보면
+
+공격에 위치, 수명, 렌더링, 충돌 정보가 필요하다면 엔티티로 표현하는 것이 자연스럽습니다.
+
+```text
+Player input     -> AttackHitbox 엔티티 생성
+Combat collision -> AttackHitbox와 Enemy body 비교
+Timer 정리       -> 만료된 AttackHitbox `despawn`
+```
+
+공격도 다른 게임 오브젝트와 같은 ECS 모델 안에 들어갑니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 10_attack_hitbox
+```
+
+기대 결과:
+
+- Space를 누르면 바라보는 방향으로 slash가 생깁니다.
+- slash가 적과 겹치면 hit count가 증가합니다.
+- 적은 충분히 맞으면 사라집니다.
+- 빗나간 slash는 금방 사라집니다.
+
+## 바꿔보기
+
+이 값을:
+
+```rust
+const HITBOX_DISTANCE: f32 = 48.0;
+```
+
+이렇게 바꿔 봅니다.
+
+```rust
+const HITBOX_DISTANCE: f32 = 90.0;
+```
+
+기대 결과: 공격이 플레이어에게서 더 멀리 생성됩니다. 가까이 붙은 적은 오히려 빗나가기 쉬워집니다.
 
 ---
 

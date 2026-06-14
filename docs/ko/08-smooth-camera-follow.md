@@ -1,70 +1,184 @@
 # 8. 부드러운 카메라 추적
 
-
 <div align="center">
 
-[목차](index.md) · [← 이전: RPG 기초 조각](07-rpg-slice.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
+[목차](index.md) · [← 이전: RPG 기초 예제](07-rpg-slice.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
 
 </div>
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 카메라가 플레이어 위치로 즉시 순간이동하지 않고, 부드럽게 따라옵니다.
+
+![카메라가 큰 맵 기준선을 보며 플레이어를 부드럽게 따라갑니다.](../../assets/screenshots/ch08-smooth-camera-follow.png)
+
+## 실행
 
 ```sh
 cargo run --example 08_smooth_camera_follow
 ```
 
-![부드러운 카메라 추적 예제는 큰 그리드 월드 안에서 카메라가 대상 엔티티를 향해 보간되는 장면을 보여줍니다.](../../assets/screenshots/ch08-smooth-camera-follow.png)
+WASD나 방향키로 움직입니다. 카메라는 처음에 플레이어와 떨어진 곳에서 시작하고, 목표 지점으로 미끄러지듯 따라옵니다.
 
-이 장의 계약은 간단합니다. 플레이어는 입력으로 움직이고, 카메라는 플레이어 엔티티를 직접 소유하지 않고 `Entity` ID로 참조합니다. 카메라 시스템은 그 ID로 대상 `Transform`을 조회한 뒤 현재 위치에서 목표 위치로 조금씩 보간합니다.
+## 구현 흐름 1: 카메라가 따라갈 대상을 저장하기
 
-## 핵심 ECS 계약
+카메라는 어떤 엔티티를 따라갈지 기억해야 합니다.
 
-- `Player`: 입력을 받는 대상입니다.
-- `CameraFollow { target, offset, smoothness }`: 카메라가 따라갈 엔티티와 추적 규칙입니다.
-- `move_player`: `ButtonInput<KeyCode>`, `Time`, `Single<&mut Transform, With<Player>>`를 사용해 플레이어 위치를 갱신합니다.
-- `smooth_follow_camera`: 모든 `CameraFollow` 카메라를 순회하고, `Query<&Transform, Without<Camera2d>>`에서 `target`의 위치를 읽습니다.
+```rust
+#[derive(Component)]
+struct CameraFollow {
+    target: Entity,
+    offset: Vec3,
+    smoothness: f32,
+}
+```
 
-`CameraFollow.target`은 `commands.spawn(...).id()`로 얻은 플레이어 엔티티입니다. 이 방식은 부모-자식 관계를 만들지 않고도 한 엔티티가 다른 엔티티를 참조하게 합니다.
+이 컴포넌트는 플레이어가 아니라 카메라에 붙습니다. 따라가는 동작의 주체는 카메라이기 때문입니다.
 
-## Rust 포인트
+## 구현 흐름 2: 플레이어 Entity ID 잡기
 
-`let Ok(target_transform) = targets.get(follow.target) else { continue; };`는 실패 가능한 조회를 명시적으로 처리합니다. ECS에서는 엔티티 수명이 런타임에 바뀌므로, 대상이 없는 경우도 시스템 흐름 안에서 다루고 다음 카메라로 넘어갑니다.
+`commands.spawn(...).id()`는 방금 만든 엔티티 ID를 돌려줍니다.
 
-`Vec3::lerp(target, blend)`는 현재 값과 목표 값 사이의 값을 만듭니다. `blend`는 `1.0 - (-smoothness * delta).exp()`로 계산되어 프레임 시간이 달라도 비슷한 감속 느낌을 냅니다.
+```rust
+let player = commands.spawn(PlayerBundle::new(&asset_server)).id();
+```
 
-## Bevy 포인트
+카메라는 그 ID를 저장합니다.
 
-`Camera2d`도 엔티티에 붙는 컴포넌트입니다. 따라서 카메라에 `Transform`과 `CameraFollow`를 함께 붙이면 일반 게임 오브젝트처럼 시스템에서 움직일 수 있습니다.
+```rust
+commands.spawn((
+    Camera2d,
+    Transform::from_xyz(-420.0, 260.0, 0.0),
+    CameraFollow {
+        target: player,
+        offset: Vec3::new(0.0, 0.0, 0.0),
+        smoothness: CAMERA_SMOOTHNESS,
+    },
+));
+```
 
-시스템은 `(move_player, smooth_follow_camera).chain()`으로 등록됩니다. 같은 프레임에서 플레이어 이동을 먼저 반영한 뒤 카메라가 그 결과를 읽습니다.
+전역 “플레이어 위치” 리소스를 만들 필요가 없습니다. 이 카메라가 저 엔티티를 따라간다는 관계를 컴포넌트에 직접 담습니다.
 
-## 프레임 흐름
+## 구현 흐름 3: 큰 맵 안에서 플레이어 움직이기
 
-1. 입력을 읽어 플레이어 이동 벡터를 만듭니다.
-2. `time.delta_secs()`를 곱해 프레임 독립 이동을 적용합니다.
-3. 플레이어 위치를 맵 범위 안으로 `clamp`합니다.
-4. 카메라가 대상 엔티티의 `Transform`을 조회합니다.
-5. 카메라 위치를 목표 위치로 보간합니다.
+플레이어는 여전히 `Transform`으로 움직입니다. 다만 예제에서는 큰 맵 밖으로 나가지 않도록 clamp합니다.
 
-## 흔한 실수
+```rust
+player.translation.x = player
+    .translation
+    .x
+    .clamp(-MAP_HALF_SIZE.x, MAP_HALF_SIZE.x);
+```
 
-- `CameraFollow.target`에 카메라 자신의 엔티티를 넣으면 카메라가 플레이어를 따라가지 않습니다.
-- `smooth_follow_camera`를 `move_player`보다 먼저 실행하면 카메라가 한 프레임 늦게 반응합니다.
-- 카메라의 z값까지 플레이어 z값으로 바꾸면 렌더링 순서가 의도와 달라질 수 있습니다. 예제는 카메라의 기존 z값을 유지합니다.
-- 대상 엔티티 조회는 `Query::get`으로 처리하면 상태 전환이나 게임오버 정리 뒤에도 시스템 흐름이 명확합니다.
+맵의 격자선은 카메라 움직임을 보이게 하려고 둔 기준입니다. 배경 기준이 없으면 카메라가 움직이는지 알아보기 어렵습니다.
 
-## 작게 바꿔보기
+## 구현 흐름 4: 목표 지점으로 보간하기
 
-- `CAMERA_SMOOTHNESS`를 `2.0`, `20.0`으로 바꿔 추적 느낌을 비교하세요.
-- `CameraFollow.offset`에 `Vec3::new(120.0, 0.0, 0.0)`을 넣어보세요.
-- 플레이어가 아니라 카메라 위치를 맵 경계 안으로 제한해보세요.
+카메라 추적 시스템은 대상 Transform을 읽고 카메라 Transform을 수정합니다.
+
+```rust
+fn smooth_follow_camera(
+    time: Res<Time>,
+    targets: Query<&Transform, Without<Camera2d>>,
+    mut cameras: Query<(&CameraFollow, &mut Transform), With<Camera2d>>,
+) {
+    for (follow, mut camera_transform) in &mut cameras {
+        let Ok(target_transform) = targets.get(follow.target) else {
+            continue;
+        };
+
+        let target = Vec3::new(
+            target_transform.translation.x,
+            target_transform.translation.y,
+            camera_transform.translation.z,
+        ) + follow.offset;
+        let blend = 1.0 - (-follow.smoothness * time.delta_secs()).exp();
+
+        camera_transform.translation = camera_transform.translation.lerp(target, blend);
+    }
+}
+```
+
+`targets.get(follow.target)`은 특정 엔티티 하나의 transform을 가져옵니다. 그 엔티티가 사라졌다면 이 카메라는 이번 프레임에 건너뜁니다.
+
+## 구현 흐름 5: 지수 보간 사용하기
+
+blend 값은 이렇게 계산합니다.
+
+```rust
+let blend = 1.0 - (-follow.smoothness * time.delta_secs()).exp();
+```
+
+이 방식은 프레임레이트가 달라도 따라가는 느낌이 크게 흔들리지 않습니다. `smoothness`가 높으면 더 빨리 따라오고, 낮으면 더 묵직하게 따라옵니다.
+
+`lerp`는 현재 카메라 위치에서 목표 위치로 보간합니다.
+
+```rust
+camera_transform.translation = camera_transform.translation.lerp(target, blend);
+```
+
+## Rust로 보면
+
+여기서 `let else`가 나옵니다.
+
+```rust
+let Ok(target_transform) = targets.get(follow.target) else {
+    continue;
+};
+```
+
+`targets.get(...)`은 `Result`를 반환합니다. 성공하면 transform을 바인딩하고, 실패하면 다음 카메라로 넘어갑니다.
+
+target이 없어질 수도 있는 구조에서는 `unwrap`보다 이런 처리가 더 분명합니다.
+
+## Bevy로 보면
+
+카메라도 평범한 엔티티입니다. 이 컴포넌트들을 가집니다.
+
+```text
+Camera2d
+Transform
+CameraFollow
+```
+
+카메라는 여러 개 있을 수 있습니다. 어떤 카메라를 어떤 순서로 어디에 렌더링할지는 별도의 설정으로 정합니다. 이 장에서는 하나의 메인 월드 카메라만 쓰지만, 설계상 플레이어가 카메라를 알 필요는 없습니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 08_smooth_camera_follow
+```
+
+기대 결과:
+
+- 플레이어는 즉시 움직입니다.
+- 카메라는 플레이어 위치로 부드럽게 따라옵니다.
+- 격자선 덕분에 카메라 이동이 눈에 보입니다.
+
+## 바꿔보기
+
+이 값을:
+
+```rust
+const CAMERA_SMOOTHNESS: f32 = 9.0;
+```
+
+이렇게 바꿔 봅니다.
+
+```rust
+const CAMERA_SMOOTHNESS: f32 = 2.0;
+```
+
+기대 결과: 카메라가 플레이어 뒤에 더 길게 따라붙습니다.
 
 ---
 
 <div align="center">
 
-[← 이전: RPG 기초 조각](07-rpg-slice.md) · [목차](index.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
+[← 이전: RPG 기초 예제](07-rpg-slice.md) · [목차](index.md) · [다음: 적 웨이브 →](09-enemy-waves.md)
 
 </div>

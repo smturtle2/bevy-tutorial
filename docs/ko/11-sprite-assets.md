@@ -1,6 +1,5 @@
 # 11. 스프라이트 에셋
 
-
 <div align="center">
 
 [목차](index.md) · [← 이전: 공격 히트박스](10-attack-hitbox.md) · [다음: 화면 고정 UI →](12-screen-space-ui.md)
@@ -9,58 +8,146 @@
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 임시 색상 사각형 대신 `assets/` 디렉토리의 이미지 에셋으로 플레이어, 적, 보석을 그립니다.
+
+![플레이어, 적, 보석 스프라이트가 이미지 에셋으로 로드됩니다.](../../assets/screenshots/ch11-sprite-assets.png)
+
+## 실행
 
 ```sh
 cargo run --example 11_sprite_assets
 ```
 
-![스프라이트 에셋 예제는 AssetServer 핸들로 이미지 파일에서 로드된 플레이어, 적, 보석을 보여줍니다.](../../assets/screenshots/ch11-sprite-assets.png)
+WASD/방향키로 플레이어를 움직입니다. 이미지 스프라이트는 엔티티에 붙어 있고, 상태 텍스트는 플레이어 위치를 따라 갱신됩니다.
 
-이 장의 계약은 파일 경로 문자열을 스프라이트 컴포넌트에 직접 저장하지 않고, `AssetServer`가 돌려주는 `Handle<Image>`를 `Sprite`에 넣는 것입니다. 엔티티는 핸들을 들고 있고, Bevy의 에셋 시스템이 실제 이미지 로딩과 공유를 담당합니다.
+## 구현 흐름 1: 픽셀 아트에 맞는 이미지 설정 쓰기
 
-## 핵심 ECS 계약
+앱은 최근접 샘플링(nearest-neighbor sampling)을 씁니다.
 
-- `PlayerBundle`: 플레이어 마커, 이미지 스프라이트, 위치를 한 번에 생성합니다.
-- `DisplaySpriteBundle`: 화면에 보여줄 단순 스프라이트와 위치를 묶습니다.
-- `AssetLabel`: 로드된 에셋 상태를 표시하는 텍스트 엔티티를 찾는 마커입니다.
-- `move_player`: 플레이어 위치를 갱신합니다.
-- `update_asset_label`: 플레이어 위치를 읽어 텍스트를 갱신합니다.
+```rust
+.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+```
 
-`Sprite::from_image(asset_server.load("player.png"))`가 핵심입니다. `load`는 즉시 이미지 픽셀을 반환하지 않고 핸들을 반환합니다. Bevy는 핸들을 보고 필요한 시점에 에셋을 로드합니다.
+픽셀 아트가 확대될 때 흐려지지 않게 하는 설정입니다.
 
-## Rust 포인트
+## 구현 흐름 2: 플레이어 이미지 로드하기
 
-`DisplaySpriteBundle::new(path: &'static str, ...)`는 예제 안의 고정 문자열 경로만 받습니다. `"enemy.png"` 같은 문자열 리터럴은 프로그램 전체 수명 동안 살아 있으므로 `&'static str`에 맞습니다.
+플레이어 bundle은 이미지 핸들로 만든 sprite를 저장합니다.
 
-`for (path, x) in [("enemy.png", -160.0), ("gem.png", 160.0)]`는 작은 고정 데이터를 배열로 두고 반복합니다. 같은 스폰 코드를 두 번 쓰지 않고, 데이터만 바꿉니다.
+```rust
+impl PlayerBundle {
+    fn new(asset_server: &AssetServer) -> Self {
+        Self {
+            player: Player,
+            sprite: Sprite::from_image(asset_server.load("player.png")),
+            transform: Transform::from_xyz(0.0, -60.0, 2.0),
+        }
+    }
+}
+```
 
-## Bevy 포인트
+`asset_server.load("player.png")`는 이 파일을 가리킵니다.
 
-`DefaultPlugins.set(ImagePlugin::default_nearest())`는 픽셀 아트가 흐려지지 않게 nearest sampling을 사용합니다. 작은 스프라이트를 확대하는 튜토리얼에서는 이 설정이 중요합니다.
+```text
+assets/player.png
+```
 
-핸들은 에셋 참조입니다. 같은 이미지를 여러 엔티티가 쓰면 각 엔티티는 같은 에셋을 가리키는 핸들을 가집니다.
+엔티티는 `Sprite` 컴포넌트를 갖고, 실제 로딩과 캐싱은 애셋 서버가 맡습니다.
 
-## 프레임 흐름
+## 구현 흐름 3: 표시용 스프라이트 생성 재사용하기
 
-1. 시작 시 카메라를 생성합니다.
-2. `AssetServer`로 `player.png`, `enemy.png`, `gem.png` 핸들을 얻습니다.
-3. 각 핸들을 `Sprite`에 넣어 엔티티를 생성합니다.
-4. 입력이 플레이어 위치를 바꿉니다.
-5. 텍스트가 현재 플레이어 좌표와 에셋 사용 사실을 표시합니다.
+예제는 정적 표시용 스프라이트 bundle을 하나 둡니다.
 
-## 흔한 실수
+```rust
+#[derive(Bundle)]
+struct DisplaySpriteBundle {
+    sprite: Sprite,
+    transform: Transform,
+}
 
-- `assets/`를 경로에 포함해 `asset_server.load("assets/player.png")`처럼 쓰지 마세요. Bevy의 기본 에셋 루트가 이미 `assets`입니다.
-- 이미지가 보이지 않을 때는 파일명 대소문자와 실행 위치를 확인하세요.
-- 픽셀 아트가 흐리면 `ImagePlugin::default_nearest()` 설정을 확인하세요.
-- 핸들이 `Sprite` 안에 저장되어 있으면 엔티티가 에셋 참조를 유지합니다.
+impl DisplaySpriteBundle {
+    fn new(path: &'static str, position: Vec3, asset_server: &AssetServer) -> Self {
+        Self {
+            sprite: Sprite::from_image(asset_server.load(path)),
+            transform: Transform::from_translation(position),
+        }
+    }
+}
+```
 
-## 작게 바꿔보기
+그러면 setup에서 여러 에셋을 간단히 생성할 수 있습니다.
 
-- `enemy.png` 대신 다른 에셋을 로드해보세요.
-- `DisplaySpriteBundle`을 하나 더 생성하세요.
-- `Transform::from_scale`로 스프라이트 크기를 바꿔보세요.
+```rust
+for (path, x) in [("enemy.png", -160.0), ("gem.png", 160.0)] {
+    commands.spawn(DisplaySpriteBundle::new(
+        path,
+        Vec3::new(x, 100.0, 2.0),
+        &asset_server,
+    ));
+}
+```
+
+경로만 데이터로 바뀌고 spawn 모양은 같습니다.
+
+## 구현 흐름 4: 게임플레이 데이터와 그림 분리하기
+
+플레이어 이동은 여전히 `Transform`을 수정합니다.
+
+```rust
+player.translation +=
+    (direction.normalize_or_zero() * PLAYER_SPEED * time.delta_secs()).extend(0.0);
+```
+
+이동 시스템은 플레이어가 색상 사각형으로 그려지는지, 이미지로 그려지는지 몰라도 됩니다.
+
+## Rust로 보면
+
+이 시그니처에는 static 수명을 가진 문자열 슬라이스가 나옵니다.
+
+```rust
+fn new(path: &'static str, position: Vec3, asset_server: &AssetServer) -> Self
+```
+
+`"enemy.png"`와 `"gem.png"` 같은 문자열 리터럴은 프로그램 내내 살아 있으므로 `&'static str`에 맞습니다.
+
+Bundle은 `AssetServer`를 빌려서 핸들을 만들고, `Sprite` 안에는 그 핸들만 저장합니다.
+
+## Bevy로 보면
+
+스프라이트 에셋도 결국 컴포넌트 데이터입니다.
+
+```text
+Sprite { image: Handle<Image>, ... }
+Transform
+```
+
+그림을 바꿨다고 이동, 충돌, AI, 저장 코드가 바뀌면 구조가 좋지 않은 겁니다. 게임플레이 컴포넌트와 렌더링 컴포넌트는 같은 엔티티에 함께 붙을 수 있지만, 시스템 책임은 분리하는 것이 좋습니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 11_sprite_assets
+```
+
+기대 결과:
+
+- `player.png`, `enemy.png`, `gem.png`가 보입니다.
+- 플레이어가 움직입니다.
+- 상태 텍스트가 플레이어 위치를 표시합니다.
+
+## 바꿔보기
+
+표시 에셋 순서를 바꿔 봅니다.
+
+```rust
+for (path, x) in [("gem.png", -160.0), ("enemy.png", 160.0)] {
+```
+
+기대 결과: 왼쪽과 오른쪽에 보이는 스프라이트가 바뀝니다. 게임플레이 코드는 바뀌지 않습니다.
 
 ---
 

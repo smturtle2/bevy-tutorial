@@ -1,87 +1,293 @@
-# 17. 완성된 RPG 조각
-
+# 17. 완성된 RPG 예제
 
 <div align="center">
 
-[목차](index.md) · [← 이전: 진행 저장/불러오기](16-save-load-progress.md) · [다음: 목차 →](index.md)
+[목차](index.md) · [← 이전: 진행도 저장과 불러오기](16-save-load-progress.md) · [다음: 기여하기 →](https://github.com/smturtle2/bevy-tutorial)
 
 </div>
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 앞에서 만든 시스템을 합쳐 작은 RPG 예제를 완성합니다. 메뉴, 게임플레이, 일시정지, 게임 오버, 이미지 에셋, 플레이어 애니메이션, 부드러운 카메라, 적 웨이브, 공격 히트박스, 맵 충돌, 화면 고정 HUD, 진행도 저장이 모두 들어갑니다.
+
+![완성된 RPG 예제는 튜토리얼에서 만든 시스템들을 하나로 합칩니다.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+
+## 실행
 
 ```sh
 cargo run --example 17_complete_rpg_slice
 ```
 
-이 장의 계약은 앞 장들의 기능을 하나의 작동하는 작은 RPG 루프로 합치는 것입니다. 메뉴에서 시작하고, 플레이 중에는 이동, 적 웨이브, 공격, 수집, 벽 충돌, 카메라, 애니메이션, HUD, 저장이 같은 ECS 스케줄 안에서 협력합니다.
+조작은 이렇습니다.
 
-![완성 RPG 조각은 카메라 추적, 적 웨이브, 공격 히트박스, 스프라이트 애니메이션, 화면 고정 HUD, 맵 지오메트리, 진행 저장이 함께 동작하는 장면을 보여줍니다.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
+```text
+Enter     메뉴에서 시작
+WASD      이동
+Space     공격
+P         일시정지/재개
+F5        플레이 중 진행도 저장
+F9        플레이 중 진행도 불러오기
+Esc       일시정지나 게임 오버에서 메뉴로 복귀
+R         게임 오버에서 재시작
+```
 
-## 핵심 ECS 계약
+## 구현 흐름 1: 통합 파이프라인을 명시하기
 
-- `GameState`: `Menu`, `Playing`, `Paused`, `GameOver` 흐름을 제어합니다.
-- `GameSet`: `Input -> Wave -> Ai -> Movement -> Collision -> Animation -> Ui` 실행 순서를 고정합니다.
-- `SpriteAssets`: 플레이어 시트, 적, 보석, 공격 이미지 핸들과 아틀라스 레이아웃을 모은 리소스입니다.
-- `RunStats`: 현재 플레이의 점수와 웨이브입니다.
-- `Progress`: 디스크에 저장되는 최고 점수와 해금 웨이브입니다.
-- `GameplayEntity`: 한 판이 끝날 때 정리할 엔티티 경계입니다.
+최종 예제는 시스템이 많기 때문에 프레임 단계를 명확히 둡니다.
 
-기능이 많아져도 기본 규칙은 같습니다. 데이터는 컴포넌트/리소스에 있고, 시스템은 읽기/쓰기 계약을 시그니처로 드러냅니다.
+```rust
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum GameSet {
+    Input,
+    Wave,
+    Ai,
+    Movement,
+    Collision,
+    Animation,
+    Ui,
+}
+```
 
-`Progress.unlocked_wave`는 새 run 시작 규칙에 직접 쓰입니다. 새 run은 저장된 해금 웨이브에서 시작합니다. 현재 run 기록은 `RunStats`, 영구 기록은 `Progress`로 분리합니다.
+순서는 이렇습니다.
 
-## Rust 포인트
+```text
+Input -> Wave -> Ai -> Movement -> Collision -> Animation -> Ui
+```
 
-이 예제는 작은 타입을 많이 씁니다. `Health`, `Facing`, `RunStats`, `SaveStatus`, `SpriteAssets`는 모두 단순하지만 서로 다른 의미를 가진 데이터입니다. Rust에서는 이런 타입 분리가 컴파일러가 실수를 잡을 수 있는 경계를 만듭니다.
+이 순서는 게임 설계입니다. 예를 들어 충돌 단계는 이동 단계 뒤에 와야 하고, UI는 게임플레이 변화가 끝난 뒤에 와야 합니다.
 
-`start_run(commands, assets, stats, spawner)`는 새 게임 시작에 필요한 초기화를 한곳에 모읍니다. `*stats = RunStats::default();`처럼 mutable 참조가 가리키는 값을 교체하고, `spawner.reset()`으로 웨이브 리소스를 초기 상태로 되돌립니다.
+## 구현 흐름 2: 공통 에셋을 한 번만 저장하기
 
-## Bevy 포인트
+최종 예제는 이미지 핸들과 플레이어 atlas layout을 리소스에 넣습니다.
 
-시작 시 `setup_camera_and_assets`가 카메라와 `SpriteAssets` 리소스를 준비합니다. 실제 플레이 엔티티는 메뉴에서 Enter를 누를 때 생성됩니다. 따라서 에셋 준비와 한 판의 수명은 분리되어 있습니다.
+```rust
+#[derive(Resource, Clone)]
+struct SpriteAssets {
+    player_sheet: Handle<Image>,
+    player_layout: Handle<TextureAtlasLayout>,
+    enemy: Handle<Image>,
+    gem: Handle<Image>,
+    slash: Handle<Image>,
+}
+```
 
-상태와 세트가 함께 쓰입니다. `run_if(in_state(GameState::Playing))`은 플레이 중에만 시스템을 돌리고, `GameSet` 체인은 플레이 중 시스템들의 순서를 보장합니다.
+setup에서 한 번 로드합니다.
 
-HUD는 화면 UI이고, 플레이어/적/벽/보석은 월드 엔티티입니다. 카메라는 월드를 따라가지만 HUD는 화면에 고정됩니다.
+```rust
+commands.insert_resource(SpriteAssets {
+    player_sheet: asset_server.load("player_sheet.png"),
+    player_layout,
+    enemy: asset_server.load("enemy.png"),
+    gem: asset_server.load("gem.png"),
+    slash: asset_server.load("slash.png"),
+});
+```
 
-## 프레임 흐름
+이후 Bundle은 경로를 반복해서 로드하지 않고 `&SpriteAssets`를 받습니다.
 
-1. 메뉴에서 Enter를 누르면 `start_run`이 플레이어, 맵, HUD, 보석을 생성합니다.
-2. 입력 세트가 이동 방향과 공격 히트박스를 만듭니다.
-3. 웨이브 세트가 타이머에 따라 적을 생성합니다.
-4. AI 세트가 적의 속도를 플레이어 방향으로 정합니다.
-5. 이동 세트가 위치, 벽 충돌, 카메라 추적을 처리합니다.
-6. 충돌 세트가 보석 수집, 공격 판정, 적 접촉 데미지, 사망 체크를 처리합니다.
-7. 애니메이션 세트가 플레이어 아틀라스 프레임을 바꿉니다.
-8. UI 세트가 저장 단축키와 HUD 갱신을 처리합니다.
-9. `F5`는 현재 run 기록을 `Progress`에 반영한 뒤 저장하고, `F9`는 디스크에서 진행도를 다시 읽습니다.
-10. 게임오버에 들어가면 진행도를 갱신하고 `target/tutorial-save/complete-progress.json`에 저장합니다.
+## 구현 흐름 3: Bundle을 생성 규칙처럼 쓰기
 
-## 흔한 실수
+최종 예제는 서로 다른 엔티티 모양을 Bundle 단위로 나눕니다.
 
-- 새 플레이 엔티티에는 `GameplayEntity`를 붙여 게임오버나 메뉴 복귀 때 정리 대상에 포함합니다.
-- 상태 조건 없이 시스템을 등록하면 메뉴에서도 전투, 웨이브, 충돌이 실행됩니다.
-- `SpriteAssets`를 준비하기 전에 `start_run`을 호출하면 스프라이트 핸들을 받을 수 없습니다.
-- 세트 순서를 풀어버리면 공격, 충돌, HUD가 이전 프레임 데이터를 볼 수 있습니다.
-- 저장되는 `Progress`와 현재 판의 `RunStats`를 섞지 마세요. 현재 판 기록은 `RunStats`, 영구 기록은 `Progress`입니다.
+```text
+PlayerBundle          player, body, facing, health, animation, atlas sprite
+EnemyBundle           enemy, body, health, sprite
+CollectibleBundle     gem body와 sprite
+WallBundle            static wall body와 sprite
+AttackHitboxBundle    짧게 살아 있는 피해 판정 body와 베기 스프라이트
+```
 
-## 읽는 순서
+그래서 `start_run`이 읽기 쉬워집니다.
 
-읽는 순서는 `main`의 상태/세트 등록, `start_run`이 만드는 엔티티, 각 세트의 시스템 흐름입니다. 이 순서대로 따라가면 전체 루프가 보입니다.
+```rust
+commands.spawn(PlayerBundle::new(assets));
+spawn_map(commands);
+spawn_hud(commands);
+commands.spawn(CollectibleBundle::new(position, assets));
+```
 
-## 작게 바꿔보기
+호출하는 곳에는 게임 오브젝트가 보이고, 컴포넌트 조립은 Bundle 안으로 들어갑니다.
 
-- 적 투사체를 추가하세요.
-- 두 번째 collectible 타입을 추가하세요.
-- 게임오버 저장 시 더 많은 진행도 필드를 저장하세요.
-- 경계가 충분히 익숙해지면 최종 예제를 모듈로 분리하세요.
+## 구현 흐름 4: Run 시작과 초기화
+
+run을 시작할 때 실행 중 점수와 웨이브 상태를 초기화합니다.
+
+```rust
+fn start_run(
+    commands: &mut Commands,
+    assets: &SpriteAssets,
+    progress: &Progress,
+    stats: &mut RunStats,
+    spawner: &mut WaveSpawner,
+) {
+    *stats = RunStats::default();
+    stats.wave = progress.unlocked_wave.max(1);
+    spawner.reset_to_wave(stats.wave);
+
+    commands.spawn(PlayerBundle::new(assets));
+    spawn_map(commands);
+    spawn_hud(commands);
+}
+```
+
+저장된 진행도는 시작 웨이브에 영향을 줍니다. 하지만 적, HUD, 맵처럼 실행 중에만 필요한 엔티티는 매 run마다 새로 생성합니다.
+
+## 구현 흐름 5: State로 게임플레이 실행 제한하기
+
+게임플레이 시스템은 플레이 중에만 실행됩니다.
+
+```rust
+.add_systems(
+    Update,
+    (player_input, spawn_attack_hitbox)
+        .chain()
+        .in_set(GameSet::Input)
+        .run_if(in_state(GameState::Playing)),
+)
+```
+
+메뉴, 일시정지, 게임 오버 시스템도 각자 상태 조건을 가집니다.
+
+그래서 일시정지 중에는 이동하지 않고, 메뉴에서는 적이 생성되지 않습니다.
+
+## 구현 흐름 6: 충돌 규칙 합치기
+
+충돌 단계에는 여러 게임플레이 규칙이 들어갑니다.
+
+```rust
+(
+    collect_gems,
+    attack_hits_enemies,
+    enemy_hits_player,
+    expire_attack_hitboxes,
+    end_game_if_dead,
+)
+    .chain()
+    .in_set(GameSet::Collision)
+```
+
+순서는 이렇게 읽습니다.
+
+```text
+보석 수집
+플레이어 공격 적용
+적 접촉 피해 적용
+만료된 히트박스 제거
+체력이 0이면 게임 오버 진입
+```
+
+하나로 합치지 않고 나눈 이유는 규칙마다 책임이 다르기 때문입니다.
+
+## 구현 흐름 7: 자연스러운 지점에서 진행도 저장하기
+
+게임 오버에 들어갈 때 진행도를 갱신합니다.
+
+```rust
+progress.best_score = progress.best_score.max(stats.score);
+progress.unlocked_wave = progress.unlocked_wave.max(stats.wave);
+```
+
+플레이 중 F5로 직접 저장할 수도 있습니다.
+
+```rust
+if keyboard.just_pressed(KeyCode::F5) {
+    progress.best_score = progress.best_score.max(stats.score);
+    progress.unlocked_wave = progress.unlocked_wave.max(stats.wave);
+    save_status.0 = match save_progress_to_disk(&progress) {
+        Ok(()) => format!("Saved progress to {SAVE_PATH}"),
+        Err(error) => format!("Save failed: {error}"),
+    };
+}
+```
+
+최종 게임도 임시 적, 히트박스, UI를 저장하지 않습니다. 오래 유지되어야 하는 진행도만 저장합니다.
+
+## Rust로 보면
+
+최종 예제에는 앞에서 배운 Rust 개념이 모두 섞여 있습니다.
+
+```text
+struct               component, resource, bundle
+tuple struct         Velocity(Vec2), SaveStatus(String)
+enum                 GameState, GameSet, PlayerAnimState
+impl                 생성자와 reset 메서드
+제네릭 함수          cleanup_entities::<MenuUi>
+Option               texture atlas 접근
+Result               save/load IO
+borrowing            Res, ResMut, Query, Single
+```
+
+Bevy가 매개변수를 넣어준다고 해서 Rust를 덜 쓰는 것이 아닙니다. Bevy 시스템 시그니처 자체가 Rust 타입 계약입니다.
+
+## Bevy로 보면
+
+최종 예제는 작은 ECS 규칙들의 조합입니다.
+
+```text
+상태(state)는 어떤 시스템이 실행될지 정합니다
+system set은 프레임 순서를 정합니다
+리소스(resource)는 전역 게임 상태를 저장합니다
+컴포넌트(component)는 엔티티별 사실을 저장합니다
+bundle은 생성 규칙을 재사용하게 해 줍니다
+commands는 엔티티를 만들고 제거합니다
+query는 조건에 맞는 엔티티에 동작을 적용합니다
+```
+
+이 구조 위에 오디오, 인벤토리, 대화, 발사체, 씬 로딩을 얹을 수 있습니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 17_complete_rpg_slice
+```
+
+확인 기준:
+
+- 처음에는 메뉴가 보입니다.
+- Enter를 누르면 게임플레이가 시작됩니다.
+- 플레이어가 움직이고 애니메이션이 재생됩니다.
+- 카메라가 부드럽게 따라옵니다.
+- 적이 웨이브로 생성되고 플레이어를 추적합니다.
+- Space를 누르면 베기 히트박스가 생기고 적에게 피해를 줍니다.
+- 보석을 먹으면 점수가 오릅니다.
+- 벽이 이동을 막습니다.
+- HUD는 화면에 고정됩니다.
+- P로 일시정지/재개가 됩니다.
+- 게임 오버에서 best score와 unlocked wave가 저장됩니다.
+- 재시작하면 저장된 진행도를 활용할 수 있습니다.
+
+## 바꿔보기
+
+`start_run`에 보석 위치를 하나 더 추가합니다.
+
+```rust
+Vec3::new(0.0, 210.0, 3.0),
+```
+
+기대 결과: 맵에 새 보석이 보입니다. 기존 충돌 시스템으로 수집되고, 새 시스템을 만들지 않아도 점수가 오릅니다.
+
+## 다음에 확장할 만한 것
+
+좋은 확장은 데이터로 설명할 수 있어야 합니다.
+
+```text
+audio             특정 시스템 이벤트에서 효과음 재생
+projectiles       Velocity, Body, lifetime, 피해량을 가진 엔티티
+inventory         수집한 아이템 데이터를 담는 리소스나 컴포넌트
+dialogue          상태 조건이 걸린 UI와 상호작용 표식
+scene loading     맵 데이터 파일 -> map bundle 생성
+```
+
+새 기능을 붙일 때는 먼저 데이터를 정하고, 그다음 시스템을 프레임 순서 안에 배치합니다.
 
 ---
 
 <div align="center">
 
-[← 이전: 진행 저장/불러오기](16-save-load-progress.md) · [목차](index.md) · [다음: 목차 →](index.md)
+[← 이전: 진행도 저장과 불러오기](16-save-load-progress.md) · [목차](index.md) · [기여하기 →](https://github.com/smturtle2/bevy-tutorial)
 
 </div>

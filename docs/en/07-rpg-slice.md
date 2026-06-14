@@ -1,6 +1,5 @@
 # 7. RPG Foundation Slice
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: Assets, camera, and UI](06-assets-camera-ui.md) · [Next: Smooth camera follow →](08-smooth-camera-follow.md)
@@ -9,46 +8,31 @@
 
 ---
 
-Run:
+## Outcome
+
+At the end of this chapter, you have a compact playable RPG arena:
+
+- player movement
+- enemy chase AI
+- arena bounds
+- collectible pickup
+- health damage with cooldown
+- score and health display
+- explicit system order
+
+![The RPG foundation slice combines player movement, enemies, pickups, health, score, and HUD.](../../assets/screenshots/ch07-rpg-slice.png)
+
+## Run
 
 ```sh
 cargo run --example 07_rpg_slice
 ```
 
-![The RPG foundation slice shows the player, enemies, collectibles, arena bounds, health, and score in one compact loop.](../../assets/screenshots/ch07-rpg-slice.png)
+Move with WASD or arrow keys. Collect yellow items. Avoid red enemies.
 
-This foundation example combines the earlier pieces into one compact game loop:
+## Build Step 1: Declare The Frame Phases
 
-- player input
-- simple enemy chasing
-- reusable body movement
-- arena clamping
-- collectible pickup
-- enemy damage with cooldown
-- health and score display
-- explicit system ordering
-
-This is the base slice for the rest of the tutorial. Later chapters extend it with camera smoothing, waves, hitboxes, screen-space UI, animation state, map geometry, game states, and save/load.
-
-## Constants
-
-The top of the example keeps tuning values together:
-
-```rust
-const PLAYER_SIZE: Vec2 = Vec2::splat(42.0);
-const ENEMY_SIZE: Vec2 = Vec2::new(56.0, 56.0);
-const COLLECTIBLE_SIZE: Vec2 = Vec2::splat(24.0);
-const PLAYER_SPEED: f32 = 260.0;
-const ENEMY_SPEED: f32 = 80.0;
-const MAX_HEALTH: i32 = 5;
-const ARENA_HALF_SIZE: Vec2 = Vec2::new(420.0, 260.0);
-```
-
-These stay as constants because they are fixed tuning values in this example. Difficulty settings or live tuning values can become resources when gameplay needs to change them at runtime.
-
-## System Sets
-
-The foundation example uses a five-phase `Update` order:
+The slice has enough behavior that system order must be named:
 
 ```rust
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -61,7 +45,7 @@ enum GameSet {
 }
 ```
 
-The plugin chains those sets:
+Registration turns that enum into a frame pipeline:
 
 ```rust
 .configure_sets(
@@ -77,69 +61,58 @@ The plugin chains those sets:
 )
 ```
 
-The resulting frame flow is:
+The order is the gameplay rule:
 
 ```text
-Input      player velocity from keyboard
-Ai         enemy velocity toward player
-Movement   apply velocity and clamp to arena
-Collision  collect items and damage player
-Display    update health bar and text HUD
+Input writes player velocity
+AI writes enemy velocity
+Movement writes transforms
+Collision reads final positions
+Display reads final game state
 ```
 
-That order is part of the design. Collision should happen after movement, and display should reflect the latest health and score.
+## Build Step 2: Define Shared Body Data
 
-## Components And Resource
-
-The example uses marker components for identity:
+The collision and movement systems need common data:
 
 ```rust
-struct Player;
-struct Enemy;
-struct Collectible;
-struct HealthBarFill;
-struct HealthText;
-struct ScoreText;
-```
-
-It uses data components for per-entity state:
-
-```rust
+#[derive(Component)]
 struct Body {
     half_size: Vec2,
 }
 
+#[derive(Component)]
 struct Velocity(Vec2);
+```
 
-struct Health {
-    current: i32,
-    max: i32,
+The body bundle keeps spawn shape consistent:
+
+```rust
+#[derive(Bundle)]
+struct BodyBundle {
+    body: Body,
+    velocity: Velocity,
+    transform: Transform,
+}
+
+impl BodyBundle {
+    fn new(position: Vec3, size: Vec2) -> Self {
+        Self {
+            body: Body {
+                half_size: size / 2.0,
+            },
+            velocity: Velocity(Vec2::ZERO),
+            transform: Transform::from_translation(position),
+        }
+    }
 }
 ```
 
-`Health` is a component because health belongs to the player entity. `Score` is a resource because the example has one global score:
+This is the foundation for player, enemy, and collectible entities.
 
-```rust
-#[derive(Resource)]
-struct Score(u32);
-```
+## Build Step 3: Spawn Domain Bundles
 
-The plugin inserts it:
-
-```rust
-.insert_resource(Score(0))
-```
-
-This is a deliberate split:
-
-```text
-Health = per-player component
-Score  = one game-wide resource
-```
-
-## Explicit Bundles
-
-The foundation example uses explicit bundles instead of tuple spawning for domain entities:
+The player bundle combines identity, body data, rendering, and health:
 
 ```rust
 #[derive(Bundle)]
@@ -151,95 +124,56 @@ struct PlayerBundle {
 }
 ```
 
-`BodyBundle` holds the shared physical components:
+Enemies and collectibles use the same body idea:
 
 ```rust
 #[derive(Bundle)]
-struct BodyBundle {
-    body: Body,
-    velocity: Velocity,
-    transform: Transform,
+struct EnemyBundle {
+    enemy: Enemy,
+    body: BodyBundle,
+    sprite: Sprite,
+}
+
+#[derive(Bundle)]
+struct CollectibleBundle {
+    collectible: Collectible,
+    body: BodyBundle,
+    sprite: Sprite,
 }
 ```
 
-Then `PlayerBundle`, `EnemyBundle`, and `CollectibleBundle` each define their own spawn shape:
+The entity type is not inherited. An enemy is an entity with `Enemy`, `Body`, `Velocity`, `Transform`, and `Sprite`. A collectible is an entity with `Collectible`, `Body`, `Velocity`, `Transform`, and `Sprite`.
 
-```rust
-commands.spawn(PlayerBundle::new(Vec3::new(-260.0, 0.0, 1.0)));
-commands.spawn(EnemyBundle::new(position));
-commands.spawn(CollectibleBundle::new(position));
-```
+## Build Step 4: Move The Player
 
-Nested bundles flatten when spawned. A player entity receives:
-
-```text
-Player
-Body
-Velocity
-Transform
-Sprite
-Health
-```
-
-An enemy receives:
-
-```text
-Enemy
-Body
-Velocity
-Transform
-Sprite
-```
-
-A collectible also has `Velocity` because it uses `BodyBundle`, but no system gives collectibles nonzero velocity. This keeps the bundle simple at the cost of one unused component on collectibles.
-
-## Setup
-
-`setup` creates the initial world:
-
-```text
-Camera2d
-arena frame sprites
-one player
-three enemies
-four collectibles
-health bar background
-health bar fill
-health text
-score text
-```
-
-The arena border is created by a helper function:
-
-```rust
-fn spawn_arena_frame(commands: &mut Commands) {
-    // spawns four rectangle sprites
-}
-```
-
-This helper is a normal Rust function called by `setup`. It receives `&mut Commands` and queues more spawns.
-
-## Player Input
-
-`player_input` is the same input idea from earlier chapters, but it writes actual velocity in units per second:
+Player input writes velocity:
 
 ```rust
 fn player_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut players: Query<&mut Velocity, With<Player>>,
 ) {
-    // ...
     for mut velocity in &mut players {
         velocity.0 = direction.normalize_or_zero() * PLAYER_SPEED;
     }
 }
 ```
 
-The system writes movement intent into `Velocity`. Movement later turns that intent into a `Transform` change.
+The body movement system applies velocity to every body:
 
-## Enemy AI
+```rust
+fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
+    for (mut transform, velocity) in &mut bodies {
+        transform.translation += (velocity.0 * time.delta_secs()).extend(0.0);
+    }
+}
+```
 
-Enemies chase the player:
+This makes movement reusable. Player input is only one possible source of velocity.
+
+## Build Step 5: Add Enemy Chase AI
+
+Enemy AI reads the player position and writes enemy velocity:
 
 ```rust
 fn enemy_ai(
@@ -255,36 +189,11 @@ fn enemy_ai(
 }
 ```
 
-`Single<&Transform, With<Player>>` says there must be exactly one player transform. Each enemy reads its own transform and writes its own velocity.
+`truncate()` converts `Vec3` to `Vec2` by dropping `z`. Movement direction is a 2D problem.
 
-This direct AI moves straight toward the player.
+## Build Step 6: Clamp Bodies To The Arena
 
-## Movement And Arena Clamp
-
-The plugin registers movement and clamping as a chained pair inside `GameSet::Movement`:
-
-```rust
-.add_systems(
-    Update,
-    (move_bodies, clamp_to_arena)
-        .chain()
-        .in_set(GameSet::Movement),
-)
-```
-
-The order matters: first apply velocity, then clamp the resulting position to the arena.
-
-Movement applies velocity:
-
-```rust
-fn move_bodies(time: Res<Time>, mut bodies: Query<(&mut Transform, &Velocity), With<Body>>) {
-    for (mut transform, velocity) in &mut bodies {
-        transform.translation += (velocity.0 * time.delta_secs()).extend(0.0);
-    }
-}
-```
-
-Then `clamp_to_arena` keeps bodies inside the arena:
+The arena clamp keeps bodies inside the frame:
 
 ```rust
 fn clamp_to_arena(mut bodies: Query<(&mut Transform, &Body), With<Body>>) {
@@ -297,11 +206,11 @@ fn clamp_to_arena(mut bodies: Query<(&mut Transform, &Body), With<Body>>) {
 }
 ```
 
-`Body.half_size` is what keeps large sprites from crossing the border visually. The center of a body is clamped to the arena minus its extents.
+The body half-size matters. The center of a large entity must stop sooner than the center of a small entity.
 
-## AABB Collision
+## Build Step 7: Detect AABB Collision
 
-The collision helper uses axis-aligned bounding boxes:
+This tutorial uses axis-aligned bounding box collision:
 
 ```rust
 fn overlaps(
@@ -319,18 +228,17 @@ fn overlaps(
 }
 ```
 
-This checks overlap separately on x and y:
+The rule is simple:
 
 ```text
-horizontal distance < combined half widths
-vertical distance   < combined half heights
+if center distance on x is smaller than combined half width
+and center distance on y is smaller than combined half height
+then the rectangles overlap
 ```
 
-This is axis-aligned rectangle collision for unrotated bodies.
+## Build Step 8: Collect Items
 
-## Collectibles: `Commands` And `ResMut`
-
-`collect_items` detects overlaps between the player and collectibles:
+Collectibles use `Commands` because collection removes entities:
 
 ```rust
 fn collect_items(
@@ -345,17 +253,16 @@ fn collect_items(
         if overlaps(player_transform, player_body, transform, body) {
             commands.entity(entity).despawn();
             score.0 += 1;
-            info!("score: {}", score.0);
         }
     }
 }
 ```
 
-The query includes `Entity` because despawning needs the entity ID. `Commands` queues the despawn. `ResMut<Score>` gives mutable access to the global score resource.
+The query includes `Entity` because `Commands` needs the entity ID to despawn it.
 
-## Enemy Hits: `Local` Cooldown And `Health`
+## Build Step 9: Damage With A Cooldown
 
-`enemy_hits_player` damages the player when an enemy overlaps:
+Enemy contact reduces health, but not every frame:
 
 ```rust
 fn enemy_hits_player(
@@ -376,37 +283,17 @@ fn enemy_hits_player(
         if overlaps(player_transform, player_body, enemy_transform, enemy_body) {
             health.current = (health.current - 1).max(0);
             *hit_cooldown = 1.0;
-            info!("health: {}", health.current);
             break;
         }
     }
 }
 ```
 
-`Local<f32>` stores cooldown state for this system only. The system subtracts delta time every frame. When a hit occurs, it resets the cooldown to one second.
+`Local<f32>` is perfect here because only this system owns the cooldown.
 
-`Health` is mutated directly on the player component. `(health.current - 1).max(0)` prevents health from going below zero.
+## Build Step 10: Update Display Last
 
-## Display: Health Bar And Text HUD
-
-The health bar fill is a sprite tagged with `HealthBarFill`. The display system resizes and repositions it:
-
-```rust
-fn update_health_bar(
-    player: Single<&Health, With<Player>>,
-    mut bars: Query<(&mut Sprite, &mut Transform), With<HealthBarFill>>,
-) {
-    let health = *player;
-    let health_fraction = health.current as f32 / health.max as f32;
-
-    for (mut sprite, mut transform) in &mut bars {
-        sprite.custom_size = Some(Vec2::new(160.0 * health_fraction, 14.0));
-        transform.translation.x = -315.0 - (160.0 * (1.0 - health_fraction) / 2.0);
-    }
-}
-```
-
-The text HUD updates two `Text2d` entities:
+The display phase reads the final health and score:
 
 ```rust
 fn update_hud_text(
@@ -421,50 +308,64 @@ fn update_hud_text(
 }
 ```
 
-The `Without` filters prove that the two mutable `Text2d` accesses are for different entities.
+This should happen after collision so the HUD reflects the current frame.
 
-## Why This Architecture Scales
+## Rust Lens
 
-Each feature has a clear data path:
-
-```text
-Keyboard input -> Velocity on Player
-Enemy AI       -> Velocity on Enemy
-Velocity       -> Transform on Body
-Transform/Body -> collision decisions
-Collision      -> Score resource, Health component, despawn commands
-Health/Score   -> sprites and Text2d display
-```
-
-When you add a feature, place it in the same vocabulary:
+This chapter uses Rust types as gameplay language:
 
 ```text
-New per-entity data?  Component
-One global value?     Resource
-Spawn recipe?         Bundle
-Behavior?             System
-Feature registration? Plugin
-Order dependency?     SystemSet
+Health { current, max }      named fields for related facts
+Score(u32)                   tuple struct for one global value
+BodyBundle::new(...)         associated constructor
+Local<f32>                   generic wrapper around private system state
+Single<(&Transform, &Body)>  tuple of borrowed components
 ```
 
-## Exercises
+Notice that no class inheritance is required. Shared behavior comes from shared components and shared systems.
 
-Try one change at a time:
+## Bevy Lens
 
-1. Add a fourth enemy spawn position.
-2. Change `ENEMY_SPEED` and observe how collision pressure changes.
-3. Add another collectible position and confirm the score text updates.
-4. Change `MAX_HEALTH` and make sure the starting text and health bar still make sense.
-5. Add a new `GameSet` between `Collision` and `Display` for future effects, then place no systems in it.
+The slice scales because each system has one job:
 
-## Common Mistakes
+```text
+player_input          keyboard -> player Velocity
+enemy_ai              player Transform -> enemy Velocity
+move_bodies           Velocity -> Transform
+clamp_to_arena        Transform within bounds
+collect_items         overlap -> despawn + score
+enemy_hits_player     overlap -> health
+update_hud_text       resources/components -> text
+```
 
-- Documenting score as a component here. In this example, `Score` is a resource.
-- Documenting health as a resource here. In this example, `Health` is on the player entity.
-- Forgetting to include `Entity` in a query when you need to despawn matched entities.
-- Replacing AABB overlap with a center-point check and then wondering why rectangle sizes no longer matter.
-- Removing the `Without` filters from the HUD text query and creating a mutable query conflict.
-- Treating this as a physics engine. It is hand-written collision for unrotated rectangles.
+When a later feature feels large, place it in this pipeline first. Then write the component/resource data it needs.
+
+## Check
+
+Run:
+
+```sh
+cargo run --example 07_rpg_slice
+```
+
+Expected result:
+
+- The player moves.
+- Red enemies move toward the player.
+- Yellow collectibles disappear on contact.
+- Score increases after collection.
+- Health decreases when enemies touch the player, with a short cooldown.
+- Entities stay inside the arena frame.
+
+## Change
+
+Change enemy speed:
+
+```rust
+const ENEMY_SPEED: f32 = 30.0;
+```
+
+Expected result: enemies still chase the player, but the game becomes easier. No collision or HUD code needs to change.
 
 ---
 

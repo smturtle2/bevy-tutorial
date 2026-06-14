@@ -1,6 +1,5 @@
 # 6. Assets, Camera, And UI
 
-
 <div align="center">
 
 [Index](index.md) · [← Previous: Bundles, plugins, and sets](05-bundles-plugins-sets.md) · [Next: RPG foundation slice →](07-rpg-slice.md)
@@ -9,83 +8,25 @@
 
 ---
 
-The early examples use colored sprites because they keep asset loading out of the first ECS lessons. This chapter adds three common presentation features while keeping the game logic small:
+## Outcome
 
-- load an image through `AssetServer`
-- follow the player with a camera
-- display world-space HUD text with `Text2d`
+At the end of this chapter, the player uses a real image asset, the camera follows the player, and a world-space label displays the player's position.
 
-Run:
+![A sprite asset, a camera-following view, and world-space HUD text.](../../assets/screenshots/ch06-assets-camera-ui.png)
+
+## Run
 
 ```sh
 cargo run --example 06_assets_camera_ui
 ```
 
-![The assets, camera, and UI example shows an image sprite, a world-space HUD label, and a camera-following scene.](../../assets/screenshots/ch06-assets-camera-ui.png)
+Move with WASD or arrow keys. The player stays centered because the camera follows the player.
 
-You should see an image-based player, a large background rectangle, and text that follows above the player while reporting position.
+## Build Step 1: Load A Sprite With `AssetServer`
 
-## Walkthrough: `06_assets_camera_ui`
-
-The example has two marker components:
+The player bundle receives the asset server:
 
 ```rust
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct HudText;
-```
-
-`Player` marks the movable sprite. `HudText` marks the text entity that displays the player's position.
-
-The app registers one startup system and four ordered update systems:
-
-```rust
-.add_systems(Startup, setup)
-.add_systems(
-    Update,
-    (
-        move_player,
-        follow_player,
-        update_hud_text,
-        position_hud_text,
-    )
-        .chain(),
-)
-```
-
-The order is intentional:
-
-```text
-move_player      changes the player Transform
-follow_player    moves the camera to the new player position
-update_hud_text  updates the text contents
-position_hud_text moves the text relative to the player
-```
-
-Without `.chain()`, Bevy may run compatible systems in another order. For this example, the HUD and camera should use the latest player position, so the chain is part of the behavior.
-
-## Loading A Sprite With `AssetServer`
-
-The setup system asks for `AssetServer` as a resource:
-
-```rust
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(PlayerBundle::new(&asset_server));
-}
-```
-
-The bundle owns the spawn shape:
-
-```rust
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    sprite: Sprite,
-    transform: Transform,
-}
-
 impl PlayerBundle {
     fn new(asset_server: &AssetServer) -> Self {
         Self {
@@ -97,32 +38,32 @@ impl PlayerBundle {
 }
 ```
 
-By default, Bevy resolves asset paths under the repository's `assets/` directory. This code loads:
+`asset_server.load("player.png")` returns a handle. The handle is cheap to clone and store. Bevy loads the actual image through the asset system.
+
+The path is relative to the `assets/` directory:
 
 ```text
-assets/player.png
+assets/player.png -> asset_server.load("player.png")
 ```
 
-`asset_server.load("player.png")` returns a handle. Asset loading can complete asynchronously; systems normally store and use handles instead of manually reading image files.
+## Build Step 2: Spawn A Background
 
-Use the two sprite constructors for different stages:
+The example adds a large colored sprite behind the player:
 
 ```rust
-Sprite::from_color(color, size)        // fast prototype visual
-Sprite::from_image(asset_server.load("player.png")) // image asset
+commands.spawn((
+    Sprite::from_color(Color::srgb(0.18, 0.22, 0.28), Vec2::new(900.0, 540.0)),
+    Transform::from_xyz(0.0, 0.0, 0.0),
+));
 ```
 
-The example still uses a colored sprite for the background:
+The player is at `z = 1.0`, so it draws above the background at `z = 0.0`.
 
-```rust
-Sprite::from_color(Color::srgb(0.18, 0.22, 0.28), Vec2::new(900.0, 540.0))
-```
+In 2D, larger `z` generally means drawn later and therefore visually on top.
 
-That is a normal mix: assets where identity matters, colored primitives where a simple shape is enough.
+## Build Step 3: Use `Single` For The Player
 
-## `Single` For Exactly One Player
-
-The movement system uses `Single`:
+The movement system expects exactly one player:
 
 ```rust
 fn move_player(
@@ -130,28 +71,16 @@ fn move_player(
     time: Res<Time>,
     mut player: Single<&mut Transform, With<Player>>,
 ) {
-    // ...
+    player.translation +=
+        (direction.normalize_or_zero() * PLAYER_SPEED * time.delta_secs()).extend(0.0);
 }
 ```
 
-`Single<&mut Transform, With<Player>>` means:
+`Single` is a clear statement of intent. This example is not written for a party of players. It is written for one player entity.
 
-```text
-There must be exactly one entity with Player and Transform.
-Give this system mutable access to that Transform.
-```
+## Build Step 4: Follow With The Camera
 
-That is a stronger contract than `Query<&mut Transform, With<Player>>`, which can match zero, one, or many entities. Use `Single` when the example or feature really does require exactly one match.
-
-## Camera Follow
-
-The camera is just another entity:
-
-```rust
-commands.spawn(Camera2d);
-```
-
-The follow system copies the player's x/y position into the camera:
+The camera follow system uses two `Single` queries:
 
 ```rust
 fn follow_player(
@@ -163,13 +92,13 @@ fn follow_player(
 }
 ```
 
-`Without<Camera2d>` tells Bevy that the player query excludes the camera entity. This matters because both parameters access `Transform`, and one of them is mutable.
+`Without<Camera2d>` keeps the player query separate from the camera query. Both deal with `Transform`, so filters matter.
 
-The camera's z value is left alone. In 2D, x/y controls where the camera looks, while z and projection settings control how the view is rendered.
+The system copies only `x` and `y`. The camera keeps its own `z`.
 
-## World-Space HUD With `Text2d`
+## Build Step 5: Add World-Space Text
 
-The HUD text is spawned as a normal ECS entity:
+The position label is a world entity:
 
 ```rust
 commands.spawn((
@@ -181,49 +110,71 @@ commands.spawn((
 ));
 ```
 
-This is world-space 2D text. Two systems keep it useful: one updates the text content, and one moves the text above the player.
+The text is positioned with `Transform`, so it lives in the game world. The example moves it near the player each frame:
 
 ```rust
-fn update_hud_text(
-    player: Single<&Transform, With<Player>>,
-    mut hud: Single<&mut Text2d, With<HudText>>,
-) {
-    hud.0 = format!(
-        "Position: {:.0}, {:.0}",
-        player.translation.x, player.translation.y
-    );
-}
-
-fn position_hud_text(
-    player: Single<&Transform, (With<Player>, Without<HudText>)>,
-    mut hud: Single<&mut Transform, (With<HudText>, Without<Player>)>,
-) {
-    hud.translation.x = player.translation.x;
-    hud.translation.y = player.translation.y + 230.0;
-}
+hud.translation.x = player.translation.x;
+hud.translation.y = player.translation.y + 230.0;
 ```
 
-The `Without` filters are part of the data-access contract. `position_hud_text` reads a player `Transform` and mutates the HUD `Transform`; the filters prove to Bevy that those two queries access separate entities.
+Chapter 12 will build screen-space UI that stays fixed to the window instead.
 
-`Text2d` is a tuple struct, so the string is stored in `text.0`.
+## Rust Lens
 
-The text transform is also updated. Since the camera follows the player, this keeps the HUD-like text visually near the top of the view.
+This constructor borrows `AssetServer`:
 
-## Exercise
+```rust
+fn new(asset_server: &AssetServer) -> Self
+```
 
-Try these small changes:
+The bundle does not own the asset server. It only uses it to request a handle.
 
-1. Change the HUD offset from `+ 230.0` to `+ 120.0`.
-2. Remove `.chain()` and think about which systems might read the previous frame's position.
-3. Replace `Sprite::from_image(...)` with `Sprite::from_color(...)` and confirm that movement, camera follow, and HUD text keep the same behavior with a generated color sprite.
+`format!` creates a `String`:
 
-## Common Mistakes
+```rust
+hud.0 = format!(
+    "Position: {:.0}, {:.0}",
+    player.translation.x, player.translation.y
+);
+```
 
-- Using `"assets/player.png"` instead of `"player.png"` with `AssetServer::load`.
-- Forgetting the camera and seeing nothing.
-- Using `Single` when zero or multiple entities are valid for that moment.
-- Creating two mutable queries over `Transform` and leaving Bevy without proof that they match separate entities.
-- Expecting `Text2d` to behave like fixed screen-space UI. In this example it is world-space text.
+`{:.0}` formats the number with zero decimal places.
+
+## Bevy Lens
+
+There are two coordinate spaces in this chapter:
+
+```text
+World space    Sprite, Transform, Text2d, camera movement
+Screen space   Node, Text, fixed HUD, menus
+```
+
+`Text2d` is world-space text. `Text` plus `Node` is UI text. You will use both in the RPG.
+
+## Check
+
+Run:
+
+```sh
+cargo run --example 06_assets_camera_ui
+```
+
+Expected result:
+
+- The player image appears, not a colored square.
+- The camera snaps to the player position as you move.
+- The position text follows the player and updates its numbers.
+
+## Change
+
+In `follow_player`, add an offset:
+
+```rust
+camera.translation.x = player.translation.x + 120.0;
+camera.translation.y = player.translation.y + 60.0;
+```
+
+Expected result: the player no longer sits exactly in the center. The camera tracks a point offset from the player.
 
 ---
 

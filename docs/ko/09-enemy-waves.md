@@ -1,6 +1,5 @@
 # 9. 적 웨이브
 
-
 <div align="center">
 
 [목차](index.md) · [← 이전: 부드러운 카메라 추적](08-smooth-camera-follow.md) · [다음: 공격 히트박스 →](10-attack-hitbox.md)
@@ -9,63 +8,210 @@
 
 ---
 
-실행:
+## 이 장에서 만들 것
+
+이 장이 끝나면 적이 웨이브 단위로 시간차를 두고 생성됩니다. 현재 웨이브, 남은 생성 수, 다음 생성 위치, 다음 생성 타이밍을 명시적으로 추적합니다.
+
+![웨이브 스포너가 살아 있는 적과 생성 대기 중인 적 수를 추적합니다.](../../assets/screenshots/ch09-enemy-waves.png)
+
+## 실행
 
 ```sh
 cargo run --example 09_enemy_waves
 ```
 
-![적 웨이브 예제는 웨이브 상태, 생성 대기 중인 적, 생성 위치, 플레이어, 경기장 경계를 보여줍니다.](../../assets/screenshots/ch09-enemy-waves.png)
+적은 아레나 모서리에서 생성되고, 플레이어를 쫓아오다가 짧은 시간이 지나면 사라집니다. 적이 모두 사라지고 생성 대기 수도 0이 되면 다음 웨이브로 넘어갑니다.
 
-이 장의 계약은 웨이브 진행 상태를 리소스로 두고, 타이머가 끝날 때마다 적을 생성하는 것입니다. 적은 플레이어 위치를 읽어 속도를 정하고, 이동 시스템은 속도를 위치에 반영합니다.
+## 구현 흐름 1: 웨이브 상태를 리소스에 넣기
 
-이 장은 웨이브 생성에 집중합니다. `EnemyLifetime(Timer)`가 각 웨이브의 클리어 조건을 제공하므로, 공격 시스템을 붙이기 전에 2웨이브 이상까지 흐름을 확인할 수 있습니다.
+웨이브 상태는 전역 게임플레이 상태입니다. 그래서 리소스가 맞습니다.
 
-## 핵심 ECS 계약
+```rust
+#[derive(Resource)]
+struct WaveSpawner {
+    wave: u32,
+    remaining_to_spawn: u32,
+    spawn_index: usize,
+    timer: Timer,
+}
+```
 
-- `WaveSpawner`: 현재 웨이브, 남은 생성 수, 생성 지점 인덱스, 반복 `Timer`를 가진 리소스입니다.
-- `Enemy`: 적 엔티티를 구분하는 마커 컴포넌트입니다.
-- `EnemyLifetime(Timer)`: 웨이브 진행을 확인하기 위한 수명 규칙입니다.
-- `Body { half_size }`: 충돌/경계 계산에 쓰는 크기 계약입니다.
-- `Velocity(Vec2)`: 이동 의도입니다. 입력과 AI는 이 값을 쓰고, 이동 시스템은 이 값을 읽습니다.
-- `WaveText`: 화면 텍스트 엔티티를 찾기 위한 마커입니다.
+`Default`는 첫 웨이브 값을 만듭니다.
 
-시스템 세트는 `Input -> Wave -> Ai -> Movement -> Ui` 순서로 체인됩니다. 웨이브 세트는 먼저 오래된 적을 제거하고, 그 다음 적을 만듭니다. AI가 새 적까지 포함해 속도를 계산하고, 이동이 위치를 바꾼 뒤 UI가 최종 숫자를 표시합니다.
+```rust
+impl Default for WaveSpawner {
+    fn default() -> Self {
+        Self {
+            wave: 1,
+            remaining_to_spawn: 4,
+            spawn_index: 0,
+            timer: Timer::from_seconds(0.35, TimerMode::Repeating),
+        }
+    }
+}
+```
 
-## Rust 포인트
+등록은 이렇게 합니다.
 
-`impl Default for WaveSpawner`는 초기 웨이브 규칙을 타입 가까이에 둡니다. `.init_resource::<WaveSpawner>()`는 이 `Default` 구현을 호출해 리소스를 월드에 넣습니다.
+```rust
+.init_resource::<WaveSpawner>()
+```
 
-`SPAWN_POINTS[spawner.spawn_index % SPAWN_POINTS.len()]`는 고정 배열을 순환합니다. 인덱스를 직접 증가시키되, 접근할 때 나머지 연산으로 범위를 보장합니다.
+`init_resource`는 해당 리소스가 없으면 기본값으로 생성합니다.
 
-## Bevy 포인트
+## 구현 흐름 2: 적에게 수명 주기
 
-`Timer::from_seconds(0.35, TimerMode::Repeating)`은 반복 타이머를 만듭니다. 시스템 안에서 `spawner.timer.tick(time.delta())`를 호출하면 시간이 흐르고, `just_finished()`는 이번 프레임에 타이머가 끝났는지 알려주므로 생성 타이밍에 적합합니다.
+예제에서는 적이 자동으로 사라져야 웨이브가 끝납니다.
 
-적 수는 `Query<(), With<Enemy>>`로 셉니다. 컴포넌트 데이터가 필요 없고 존재 여부만 필요할 때 빈 튜플 조회가 가볍고 의도가 분명합니다.
+```rust
+#[derive(Component)]
+struct EnemyLifetime(Timer);
+```
 
-## 프레임 흐름
+각 적은 자기 타이머를 가집니다.
 
-1. 플레이어 입력이 `Velocity`를 씁니다.
-2. 웨이브 리소스가 남은 생성 수와 살아있는 적 수를 확인합니다.
-3. 수명이 끝난 적을 제거하고, 타이머가 끝났으면 다음 생성 지점에 적을 스폰합니다.
-4. 적 AI가 플레이어 방향으로 적의 `Velocity`를 씁니다.
-5. 모든 `Body` 엔티티가 이동하고 경기장 안으로 제한됩니다.
-6. UI가 웨이브, 생존 적 수, 대기 생성 수를 표시합니다.
+```rust
+lifetime: EnemyLifetime(Timer::from_seconds(2.5, TimerMode::Once)),
+```
 
-## 흔한 실수
+만료 시스템은 타이머가 끝난 적을 `despawn`합니다.
 
-- `Timer`는 매 프레임 `tick`해야 `just_finished()`가 생성 시점을 알려줍니다.
-- 다음 웨이브 시작 조건에는 `remaining_to_spawn == 0`과 살아있는 적 수를 함께 사용합니다.
-- 적을 제거하는 클리어 규칙이 없으면 2웨이브에 도달할 수 없습니다.
-- AI와 이동 순서가 바뀌면 적이 이전 프레임 속도로 움직입니다.
-- `Query<Entity, With<Enemy>>`가 필요하지 않은데 엔티티를 읽으면 코드 의도가 흐려집니다. 카운트만 필요하면 `Query<(), With<Enemy>>`로 충분합니다.
+```rust
+fn expire_enemies(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut enemies: Query<(Entity, &mut EnemyLifetime), With<Enemy>>,
+) {
+    for (entity, mut lifetime) in &mut enemies {
+        lifetime.0.tick(time.delta());
 
-## 작게 바꿔보기
+        if lifetime.0.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+```
 
-- 웨이브마다 생성되는 적 수를 더 크게 바꿔보세요.
-- `SPAWN_POINTS`에 새 생성 지점을 추가하세요.
-- 히트박스 장을 끝낸 뒤 `EnemyLifetime` 대신 실제 전투로 웨이브를 clear하게 바꿔보세요.
+## 구현 흐름 3: 다음 웨이브 시작하기
+
+스포너는 조건 두 개를 확인합니다.
+
+```rust
+if spawner.remaining_to_spawn == 0 && enemies.iter().count() == 0 {
+    spawner.wave += 1;
+    spawner.remaining_to_spawn = spawner.wave + 3;
+    spawner.timer.reset();
+}
+```
+
+생성 대기 중인 적이 없고, 살아 있는 적도 없어야 다음 웨이브가 시작됩니다.
+
+## 구현 흐름 4: 타이머 진행에 맞춰 생성하기
+
+스포너는 매 프레임 타이머를 진행시킵니다.
+
+```rust
+spawner.timer.tick(time.delta());
+
+if !spawner.timer.just_finished() {
+    return;
+}
+```
+
+타이머가 막 끝난 프레임에만 적을 생성합니다.
+
+```rust
+let spawn = SPAWN_POINTS[spawner.spawn_index % SPAWN_POINTS.len()];
+spawner.spawn_index += 1;
+spawner.remaining_to_spawn -= 1;
+
+commands.spawn(EnemyBundle::new(spawn.extend(2.0), asset_server.as_ref()));
+```
+
+`%`를 쓰면 생성 지점 개수보다 웨이브 크기가 커도 위치가 순환됩니다.
+
+## 구현 흐름 5: 웨이브 상태 표시하기
+
+UI 텍스트는 리소스와 Enemy 쿼리를 읽습니다.
+
+```rust
+fn update_wave_text(
+    spawner: Res<WaveSpawner>,
+    enemies: Query<(), With<Enemy>>,
+    mut text: Single<&mut Text, With<WaveText>>,
+) {
+    text.0 = format!(
+        "Wave {} | alive: {} | queued: {}",
+        spawner.wave,
+        enemies.iter().count(),
+        spawner.remaining_to_spawn
+    );
+}
+```
+
+`Query<(), With<Enemy>>`는 “Enemy가 붙은 엔티티를 세기만 하고, 컴포넌트 데이터는 필요 없다”는 뜻입니다.
+
+## Rust로 보면
+
+이 상수는 배열입니다.
+
+```rust
+const SPAWN_POINTS: [Vec2; 4] = [
+    Vec2::new(-470.0, 260.0),
+    Vec2::new(470.0, 260.0),
+    Vec2::new(-470.0, -260.0),
+    Vec2::new(470.0, -260.0),
+];
+```
+
+`[Vec2; 4]`는 `Vec2` 값이 정확히 네 개 있다는 뜻입니다.
+
+인덱스에는 `usize`를 씁니다.
+
+```rust
+spawn_index: usize
+```
+
+Rust 배열 인덱스 타입은 `usize`입니다.
+
+## Bevy로 보면
+
+웨이브 생성 상태는 `Update` 안의 지역 변수로 둘 수 없습니다. 프레임이 지나도 유지되어야 하기 때문입니다. 기준은 이렇게 잡습니다.
+
+```text
+한 프레임 안에서만 필요한 계산값     -> 지역 변수
+한 시스템만 기억하면 되는 값         -> Local<T>
+여러 프레임/시스템에서 쓰는 전역 상태 -> 리소스
+```
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 09_enemy_waves
+```
+
+기대 결과:
+
+- 웨이브 텍스트가 wave 1에서 시작합니다.
+- 적이 모서리에서 시간차를 두고 나타납니다.
+- 적이 생성되고 사라지면서 alive 수가 바뀝니다.
+- 현재 웨이브가 끝나면 다음 웨이브가 시작됩니다.
+
+## 바꿔보기
+
+타이머를 바꿔 봅니다.
+
+```rust
+Timer::from_seconds(0.35, TimerMode::Repeating)
+```
+
+```rust
+Timer::from_seconds(0.08, TimerMode::Repeating)
+```
+
+기대 결과: 적이 훨씬 빠르게 생성됩니다. 웨이브 규칙은 그대로 유지됩니다.
 
 ---
 

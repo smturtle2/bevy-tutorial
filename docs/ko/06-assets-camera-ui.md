@@ -1,91 +1,32 @@
 # 6. 에셋, 카메라, UI
 
-
 <div align="center">
 
-[목차](index.md) · [← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [다음: RPG 기초 조각 →](07-rpg-slice.md)
+[목차](index.md) · [← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [다음: RPG 기초 예제 →](07-rpg-slice.md)
 
 </div>
 
 ---
 
-초기 예제는 색 sprite를 사용합니다. 첫 ECS 수업에서 asset loading을 제외할 수 있기 때문입니다. 이 장은 게임 로직을 작게 유지하면서 흔한 presentation 기능 세 가지를 추가합니다.
+## 이 장에서 만들 것
 
-- `AssetServer`로 이미지 로드
-- 플레이어를 따라가는 카메라
-- `Text2d`로 월드 공간 HUD 텍스트 표시
+이 장이 끝나면 플레이어가 실제 이미지 에셋으로 보이고, 카메라가 플레이어를 따라오며, 월드 공간의 텍스트가 플레이어 위치를 표시합니다.
 
-실행합니다.
+![스프라이트 에셋, 카메라 추적, 월드 공간 HUD 텍스트.](../../assets/screenshots/ch06-assets-camera-ui.png)
+
+## 실행
 
 ```sh
 cargo run --example 06_assets_camera_ui
 ```
 
-![에셋, 카메라, UI 예제는 이미지 스프라이트, 월드 공간 HUD 라벨, 카메라가 따라가는 장면을 보여줍니다.](../../assets/screenshots/ch06-assets-camera-ui.png)
+WASD나 방향키로 움직입니다. 카메라가 플레이어를 따라오기 때문에 플레이어는 화면 가운데에 머뭅니다.
 
-이미지 기반 플레이어, 큰 배경 사각형, 그리고 플레이어 위를 따라다니며 위치를 표시하는 텍스트가 보여야 합니다.
+## 구현 흐름 1: `AssetServer`로 스프라이트 로드하기
 
-## 둘러보기: `06_assets_camera_ui`
-
-예제에는 marker component가 두 개 있습니다.
+플레이어 bundle은 애셋 서버를 받습니다.
 
 ```rust
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct HudText;
-```
-
-`Player`는 움직일 sprite를 표시합니다. `HudText`는 플레이어 위치를 표시하는 텍스트 엔티티를 표시합니다.
-
-앱은 startup 시스템 하나와 순서 있는 update 시스템 네 개를 등록합니다.
-
-```rust
-.add_systems(Startup, setup)
-.add_systems(
-    Update,
-    (
-        move_player,
-        follow_player,
-        update_hud_text,
-        position_hud_text,
-    )
-        .chain(),
-)
-```
-
-순서는 의도적입니다.
-
-```text
-move_player       player Transform 변경
-follow_player     camera를 새 player 위치로 이동
-update_hud_text   text 내용 갱신
-position_hud_text text를 player 기준 위치로 이동
-```
-
-`.chain()`이 없으면 Bevy는 호환 가능한 시스템을 다른 순서로 실행할 수 있습니다. 이 예제에서 HUD와 카메라는 최신 player position을 사용해야 하므로 chain도 동작의 일부입니다.
-
-## `AssetServer`로 Sprite 로드
-
-setup 시스템은 `AssetServer`를 리소스로 요청합니다.
-
-```rust
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(PlayerBundle::new(&asset_server));
-}
-```
-
-번들이 생성 모양을 소유합니다.
-
-```rust
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    sprite: Sprite,
-    transform: Transform,
-}
-
 impl PlayerBundle {
     fn new(asset_server: &AssetServer) -> Self {
         Self {
@@ -97,32 +38,32 @@ impl PlayerBundle {
 }
 ```
 
-기본적으로 Bevy는 asset path를 저장소의 `assets/` 디렉터리 아래에서 해석합니다. 이 코드는 다음 파일을 로드합니다.
+`asset_server.load("player.png")`는 핸들을 반환합니다. 핸들은 가볍게 복제해 저장할 수 있고, 실제 이미지 로딩은 Bevy의 애셋 시스템이 처리합니다.
+
+경로는 `assets/` 디렉토리를 기준으로 합니다.
 
 ```text
-assets/player.png
+assets/player.png -> asset_server.load("player.png")
 ```
 
-`asset_server.load("player.png")`는 handle을 반환합니다. asset loading은 비동기로 완료될 수 있습니다. 시스템은 보통 이미지 파일을 직접 읽지 않고 handle을 저장하고 사용합니다.
+## 구현 흐름 2: 배경 만들기
 
-단계에 따라 두 sprite 생성자를 씁니다.
+예제는 플레이어 뒤에 큰 색상 스프라이트를 둡니다.
 
 ```rust
-Sprite::from_color(color, size)        // fast prototype visual
-Sprite::from_image(asset_server.load("player.png")) // image asset
+commands.spawn((
+    Sprite::from_color(Color::srgb(0.18, 0.22, 0.28), Vec2::new(900.0, 540.0)),
+    Transform::from_xyz(0.0, 0.0, 0.0),
+));
 ```
 
-예제는 배경에는 여전히 색 sprite를 씁니다.
+플레이어는 `z = 1.0`, 배경은 `z = 0.0`입니다. 그래서 플레이어가 배경 위에 그려집니다.
 
-```rust
-Sprite::from_color(Color::srgb(0.18, 0.22, 0.28), Vec2::new(900.0, 540.0))
-```
+2D에서는 보통 `z` 값이 클수록 나중에 그려지고, 화면에서는 위에 보입니다.
 
-이것은 자연스러운 조합입니다. 정체성이 중요한 곳에는 에셋을 쓰고, 단순한 shape이면 colored primitive로 충분합니다.
+## 구현 흐름 3: 플레이어 하나에는 `Single` 쓰기
 
-## 정확히 하나의 플레이어를 위한 `Single`
-
-이동 시스템은 `Single`을 씁니다.
+이동 시스템은 플레이어가 정확히 하나라고 기대합니다.
 
 ```rust
 fn move_player(
@@ -130,28 +71,16 @@ fn move_player(
     time: Res<Time>,
     mut player: Single<&mut Transform, With<Player>>,
 ) {
-    // ...
+    player.translation +=
+        (direction.normalize_or_zero() * PLAYER_SPEED * time.delta_secs()).extend(0.0);
 }
 ```
 
-`Single<&mut Transform, With<Player>>`의 뜻:
+`Single`은 의도를 분명하게 보여줍니다. 이 예제는 여러 명의 플레이어를 다루는 코드가 아니라, 플레이어 하나를 다루는 코드입니다.
 
-```text
-Player와 Transform을 가진 엔티티가 정확히 하나 있어야 합니다.
-이 시스템에 그 Transform에 대한 가변 접근을 줍니다.
-```
+## 구현 흐름 4: 카메라가 플레이어 따라가기
 
-`Query<&mut Transform, With<Player>>`보다 강한 계약입니다. `Query`는 0개, 1개, 여러 개 엔티티를 매칭할 수 있습니다. 예제나 기능이 정말 정확히 하나의 match를 요구할 때 `Single`을 쓰세요.
-
-## Camera Follow
-
-카메라도 그냥 엔티티입니다.
-
-```rust
-commands.spawn(Camera2d);
-```
-
-follow 시스템은 플레이어의 x/y 위치를 카메라에 복사합니다.
+카메라 추적 시스템은 `Single` 쿼리 두 개를 씁니다.
 
 ```rust
 fn follow_player(
@@ -163,13 +92,13 @@ fn follow_player(
 }
 ```
 
-`Without<Camera2d>`는 player query가 camera entity를 제외한다고 Bevy에게 알려줍니다. 두 파라미터가 모두 `Transform`에 접근하고 하나는 mutable이므로 중요합니다.
+`Without<Camera2d>`는 플레이어 쿼리와 카메라 쿼리를 분리합니다. 둘 다 `Transform`을 다루므로 필터가 중요합니다.
 
-카메라의 z 값은 그대로 둡니다. 2D에서 x/y는 카메라가 바라보는 위치를 제어하고, z와 projection 설정은 view가 렌더링되는 방식을 제어합니다.
+이 시스템은 `x`, `y`만 복사합니다. 카메라의 `z`는 그대로 둡니다.
 
-## `Text2d`로 World-Space HUD 만들기
+## 구현 흐름 5: 월드 공간 텍스트 추가하기
 
-HUD 텍스트도 평범한 ECS 엔티티로 spawn됩니다.
+위치 표시 텍스트는 월드 엔티티입니다.
 
 ```rust
 commands.spawn((
@@ -181,54 +110,76 @@ commands.spawn((
 ));
 ```
 
-이 텍스트는 월드 공간의 2D 텍스트입니다. 두 시스템이 HUD처럼 보이게 유지합니다. 하나는 텍스트 내용을 갱신하고, 하나는 텍스트 위치를 플레이어 위로 옮깁니다.
+이 텍스트는 `Transform`으로 위치가 정해지므로 게임 월드 안에 있습니다. 예제는 매 프레임 텍스트를 플레이어 근처로 옮깁니다.
 
 ```rust
-fn update_hud_text(
-    player: Single<&Transform, With<Player>>,
-    mut hud: Single<&mut Text2d, With<HudText>>,
-) {
-    hud.0 = format!(
-        "Position: {:.0}, {:.0}",
-        player.translation.x, player.translation.y
-    );
-}
-
-fn position_hud_text(
-    player: Single<&Transform, (With<Player>, Without<HudText>)>,
-    mut hud: Single<&mut Transform, (With<HudText>, Without<Player>)>,
-) {
-    hud.translation.x = player.translation.x;
-    hud.translation.y = player.translation.y + 230.0;
-}
+hud.translation.x = player.translation.x;
+hud.translation.y = player.translation.y + 230.0;
 ```
 
-`Without` 필터는 데이터 접근 계약의 일부입니다. `position_hud_text`는 player `Transform`을 읽고 HUD `Transform`을 수정합니다. 필터는 두 쿼리가 서로 다른 엔티티에 접근한다는 사실을 Bevy에 증명합니다.
+12장에서는 화면에 고정되는 UI를 만듭니다.
 
-`Text2d`는 튜플 struct이므로 문자열은 `text.0`에 저장됩니다.
+## Rust로 보면
 
-텍스트 transform도 함께 갱신됩니다. 카메라가 플레이어를 따라가므로 HUD 같은 텍스트가 화면 위쪽 근처에 보이게 됩니다.
+이 생성자는 `AssetServer`를 빌립니다.
 
-## 연습
+```rust
+fn new(asset_server: &AssetServer) -> Self
+```
 
-작은 변경을 시도하세요.
+Bundle이 애셋 서버를 소유하는 것이 아닙니다. 잠깐 빌려서 핸들을 요청할 뿐입니다.
 
-1. HUD offset을 `+ 230.0`에서 `+ 120.0`으로 바꿔 보세요.
-2. `.chain()`을 제거하고 어떤 시스템이 이전 프레임의 위치를 읽을 수 있는지 생각해 보세요.
-3. `Sprite::from_image(...)`를 `Sprite::from_color(...)`로 바꾸고 movement, camera follow, HUD text가 생성 색상 스프라이트에서도 같은 동작을 유지하는지 확인하세요.
+`format!`은 `String`을 만듭니다.
 
-## 흔한 실수
+```rust
+hud.0 = format!(
+    "Position: {:.0}, {:.0}",
+    player.translation.x, player.translation.y
+);
+```
 
-- `AssetServer::load`에 `"player.png"` 대신 `"assets/player.png"`를 사용함.
-- 카메라를 잊고 아무것도 보이지 않음.
-- 그 순간 0개나 여러 개 엔티티가 유효한데 `Single`을 사용함.
-- `Transform`에 대한 가변 query 두 개를 만들고, 두 쿼리가 서로 다른 엔티티를 매칭한다는 증명을 필터로 제공하지 않음.
-- `Text2d`가 고정 화면 고정 UI처럼 동작한다고 기대함. 이 예제에서는 월드 공간 텍스트입니다.
+`{:.0}`은 소수점 없이 숫자를 표시하라는 뜻입니다.
+
+## Bevy로 보면
+
+이 장에는 좌표 공간이 두 개 나옵니다.
+
+```text
+월드 공간     Sprite, Transform, Text2d, 카메라 이동
+화면 공간     Node, Text, 고정 HUD, 메뉴
+```
+
+`Text2d`는 월드 공간 텍스트입니다. `Text`와 `Node`는 UI 텍스트입니다. RPG에서는 둘 다 쓰게 됩니다.
+
+## 확인
+
+실행합니다.
+
+```sh
+cargo run --example 06_assets_camera_ui
+```
+
+기대 결과:
+
+- 색상 사각형이 아니라 플레이어 이미지가 보입니다.
+- 움직이면 카메라가 플레이어 위치로 따라옵니다.
+- 위치 텍스트가 플레이어를 따라오며 숫자가 갱신됩니다.
+
+## 바꿔보기
+
+`follow_player`에 오프셋을 더해 봅니다.
+
+```rust
+camera.translation.x = player.translation.x + 120.0;
+camera.translation.y = player.translation.y + 60.0;
+```
+
+기대 결과: 플레이어가 화면 정중앙에 있지 않고, 카메라가 플레이어에서 조금 떨어진 지점을 따라갑니다.
 
 ---
 
 <div align="center">
 
-[← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [목차](index.md) · [다음: RPG 기초 조각 →](07-rpg-slice.md)
+[← 이전: 번들, 플러그인, 세트](05-bundles-plugins-sets.md) · [목차](index.md) · [다음: RPG 기초 예제 →](07-rpg-slice.md)
 
 </div>
