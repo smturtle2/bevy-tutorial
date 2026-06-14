@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
 
 const PLAYER_SPEED: f32 = 260.0;
 const PLAYER_SCALE: f32 = 3.0;
@@ -58,24 +59,60 @@ fn setup(
     let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 4, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
 
+    let capture = tutorial_capture_enabled();
+    let animation = if capture {
+        PlayerAnimation {
+            state: PlayerAnimState::Attack,
+            attack_timer: Timer::from_seconds(30.0, TimerMode::Once),
+            ..default()
+        }
+    } else {
+        PlayerAnimation::default()
+    };
+    let initial_frame = if capture { 3 } else { 0 };
+
     commands.spawn((
         Player,
         Velocity(Vec2::ZERO),
-        PlayerAnimation::default(),
+        animation,
         Sprite {
-            image: texture,
+            image: texture.clone(),
             texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0,
+                layout: texture_atlas_layout.clone(),
+                index: initial_frame,
             }),
             ..default()
         },
         Transform::from_scale(Vec3::splat(PLAYER_SCALE)),
     ));
 
+    if capture {
+        for index in 0..4 {
+            commands.spawn((
+                Sprite {
+                    image: texture.clone(),
+                    texture_atlas: Some(TextureAtlas {
+                        layout: texture_atlas_layout.clone(),
+                        index,
+                    }),
+                    ..default()
+                },
+                Transform {
+                    translation: Vec3::new(-210.0 + index as f32 * 140.0, -175.0, 1.0),
+                    scale: Vec3::splat(2.0),
+                    ..default()
+                },
+            ));
+        }
+    }
+
     commands.spawn((
         AnimationLabel,
-        Text::new("Idle"),
+        Text::new(if capture {
+            "Animation state: Attack | atlas.index = 3"
+        } else {
+            "Idle"
+        }),
         TextFont::from_font_size(24.0),
         TextColor(Color::srgb(0.92, 0.95, 1.0)),
         Node {

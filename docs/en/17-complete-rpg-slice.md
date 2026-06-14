@@ -15,7 +15,7 @@ Run:
 cargo run --example 17_complete_rpg_slice
 ```
 
-![Complete RPG slice preview](../../assets/screenshots/complete-rpg-slice-preview.png)
+![The complete RPG slice shows camera follow, enemy waves, attack hitboxes, sprite animation, screen-space HUD, map geometry, and save progress working together.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
 ## Contract
 

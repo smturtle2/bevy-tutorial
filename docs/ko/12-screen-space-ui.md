@@ -15,6 +15,8 @@
 cargo run --example 12_screen_space_ui
 ```
 
+![화면 고정 UI 예제는 카메라가 따라가는 월드 장면 위에 고정된 HUD 텍스트와 체력바를 보여줍니다.](../../assets/screenshots/ch12-screen-space-ui.png)
+
 이 장의 계약은 월드 오브젝트와 화면 UI를 분리하는 것입니다. 플레이어와 배경은 카메라 이동의 영향을 받지만, `Node` 기반 UI는 화면 좌표에 고정됩니다.
 
 ## 핵심 ECS 계약

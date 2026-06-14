@@ -15,6 +15,8 @@ Run:
 cargo run --example 12_screen_space_ui
 ```
 
+![The screen-space UI example shows fixed HUD text and a health bar over a camera-following world scene.](../../assets/screenshots/ch12-screen-space-ui.png)
+
 ## Contract
 
 World-space text lives in the game world. Screen-space UI is fixed to the screen.

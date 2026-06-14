@@ -15,6 +15,8 @@ Run:
 cargo run --example 08_smooth_camera_follow
 ```
 
+![The smooth camera follow example shows the player inside a larger grid world while the camera eases toward the target entity.](../../assets/screenshots/ch08-smooth-camera-follow.png)
+
 ## Contract
 
 The camera is an entity. It should not be treated as a hidden global viewport. In this chapter the camera has a `CameraFollow` component:

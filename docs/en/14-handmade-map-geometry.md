@@ -15,6 +15,8 @@ Run:
 cargo run --example 14_handmade_map_geometry
 ```
 
+![The handmade map geometry example shows visual floor tiles, blocking wall rectangles, and the player inside collision bounds.](../../assets/screenshots/ch14-handmade-map.png)
+
 ## Contract
 
 You do not need a tilemap crate to learn map structure. This chapter builds a map from entities.

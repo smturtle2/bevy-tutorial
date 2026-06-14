@@ -15,6 +15,8 @@ Run:
 cargo run --example 11_sprite_assets
 ```
 
+![The sprite asset example shows the player, enemy, and gem loaded from image files through AssetServer handles.](../../assets/screenshots/ch11-sprite-assets.png)
+
 ## Contract
 
 Prototype sprites can be colored rectangles. Domain sprites should move to image assets once identity matters.

@@ -21,6 +21,8 @@ Run:
 cargo run --example 06_assets_camera_ui
 ```
 
+![The assets, camera, and UI example shows an image sprite, a world-space HUD label, and a camera-following scene.](../../assets/screenshots/ch06-assets-camera-ui.png)
+
 You should see an image-based player, a large background rectangle, and text that follows above the player while reporting position.
 
 ## Walkthrough: `06_assets_camera_ui`

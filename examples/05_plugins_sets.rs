@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum GameSet {
@@ -60,7 +61,13 @@ impl Plugin for GamePlugin {
             .configure_sets(Update, (GameSet::Input, GameSet::Movement).chain())
             .add_plugins(BodyPlugin)
             .add_plugins(PlayerPlugin)
-            .add_systems(Startup, setup_camera);
+            .add_systems(Startup, setup_camera)
+            .add_systems(
+                Update,
+                capture_plugin_scene
+                    .in_set(GameSet::Movement)
+                    .after(move_bodies),
+            );
     }
 }
 
@@ -91,6 +98,39 @@ fn main() {
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+
+    if tutorial_capture_enabled() {
+        commands.spawn((
+            Text::new(
+                "GamePlugin registers BodyPlugin + PlayerPlugin\nSystem order: Input -> Movement",
+            ),
+            TextFont::from_font_size(26.0),
+            TextColor(Color::srgb(0.92, 0.95, 1.0)),
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(18),
+                left: px(22),
+                ..default()
+            },
+        ));
+
+        for (label, y, color) in [
+            ("PlayerPlugin", 120.0, Color::srgb(0.25, 0.70, 1.0)),
+            ("BodyPlugin", 0.0, Color::srgb(0.22, 0.84, 0.40)),
+            ("GameSet::Movement", -120.0, Color::srgb(1.0, 0.82, 0.25)),
+        ] {
+            commands.spawn((
+                Sprite::from_color(color, Vec2::new(260.0, 58.0)),
+                Transform::from_xyz(-210.0, y, 0.0),
+            ));
+            commands.spawn((
+                Text2d::new(label),
+                TextFont::from_font_size(24.0),
+                TextColor(Color::srgb(0.06, 0.07, 0.09)),
+                Transform::from_xyz(-210.0, y - 8.0, 1.0),
+            ));
+        }
+    }
 }
 
 fn spawn_player(mut commands: Commands) {
@@ -130,5 +170,16 @@ fn move_bodies(
 
     for (mut transform, velocity) in &mut bodies {
         transform.translation += (velocity.0 * movement_scale).extend(0.0);
+    }
+}
+
+fn capture_plugin_scene(mut players: Query<(&mut Transform, &mut Velocity), With<Player>>) {
+    if !tutorial_capture_enabled() {
+        return;
+    }
+
+    for (mut transform, mut velocity) in &mut players {
+        velocity.0 = Vec2::new(0.86, 0.28);
+        transform.translation = Vec3::new(210.0, 130.0, 1.0);
     }
 }

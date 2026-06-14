@@ -15,6 +15,8 @@
 cargo run --example 14_handmade_map_geometry
 ```
 
+![직접 만든 맵 지오메트리 예제는 보이는 바닥 타일, 충돌하는 벽 사각형, 충돌 경계 안의 플레이어를 보여줍니다.](../../assets/screenshots/ch14-handmade-map.png)
+
 이 장의 계약은 보이는 바닥과 충돌하는 벽을 분리하는 것입니다. 바닥 타일은 시각 요소만 갖고, 벽은 `Wall + Body + Transform`을 가져 충돌 시스템의 대상이 됩니다.
 
 ## 핵심 ECS 계약

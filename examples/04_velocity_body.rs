@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
 
 #[derive(Component)]
 struct Body;
@@ -52,13 +53,50 @@ fn main() {
         .insert_resource(BodySpeed(220.0))
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, (handle_player_input, move_bodies).chain())
+        .add_systems(
+            Update,
+            (handle_player_input, move_bodies, capture_velocity_body_pose).chain(),
+        )
         .run();
 }
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.spawn(PlayerBundle::new());
+
+    if tutorial_capture_enabled() {
+        for (position, color) in [
+            (
+                Vec3::new(-210.0, -130.0, -0.1),
+                Color::srgba(0.25, 0.70, 1.0, 0.20),
+            ),
+            (
+                Vec3::new(-70.0, -20.0, -0.1),
+                Color::srgba(0.25, 0.70, 1.0, 0.32),
+            ),
+            (
+                Vec3::new(80.0, 80.0, -0.1),
+                Color::srgba(0.25, 0.70, 1.0, 0.45),
+            ),
+        ] {
+            commands.spawn((
+                Sprite::from_color(color, Vec2::splat(80.0)),
+                Transform::from_translation(position),
+            ));
+        }
+
+        commands.spawn((
+            Text::new("Player input writes Velocity; Body movement writes Transform"),
+            TextFont::from_font_size(25.0),
+            TextColor(Color::srgb(0.92, 0.95, 1.0)),
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(18),
+                left: px(22),
+                ..default()
+            },
+        ));
+    }
 }
 
 fn handle_player_input(
@@ -94,5 +132,16 @@ fn move_bodies(
 
     for (mut transform, velocity) in &mut bodies {
         transform.translation += (velocity.0 * movement_scale).extend(0.0);
+    }
+}
+
+fn capture_velocity_body_pose(mut players: Query<(&mut Transform, &mut Velocity), With<Player>>) {
+    if !tutorial_capture_enabled() {
+        return;
+    }
+
+    for (mut transform, mut velocity) in &mut players {
+        velocity.0 = Vec2::new(0.78, 0.62);
+        transform.translation = Vec3::new(245.0, 155.0, 1.0);
     }
 }

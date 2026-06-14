@@ -15,7 +15,7 @@ Run:
 cargo run --example 07_rpg_slice
 ```
 
-![RPG slice preview](../../assets/screenshots/rpg-slice-preview.png)
+![The RPG foundation slice shows the player, enemies, collectibles, arena bounds, health, and score in one compact loop.](../../assets/screenshots/ch07-rpg-slice.png)
 
 This foundation example combines the earlier pieces into one compact game loop:
 

@@ -15,6 +15,8 @@
 cargo run --example 16_save_load_progress
 ```
 
+![진행도 저장/불러오기 예제는 화면에 영구 Progress 데이터, 단축키, JSON 저장 경로를 표시합니다.](../../assets/screenshots/ch16-save-load-progress.png)
+
 이 장의 계약은 저장 가능한 게임 진행도를 Bevy 리소스로 들고, 필요할 때 JSON 파일로 직렬화하는 것입니다. 예제는 `target/tutorial-save/progress.json`을 사용합니다.
 
 ## 핵심 ECS 계약

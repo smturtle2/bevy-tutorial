@@ -15,6 +15,8 @@ Run:
 cargo run --example 09_enemy_waves
 ```
 
+![The enemy wave example shows wave status, queued enemies, spawn positions, the player, and arena bounds.](../../assets/screenshots/ch09-enemy-waves.png)
+
 ## Contract
 
 Enemy wave generation is global game state, so it belongs in a resource. Enemies are actual gameplay objects, so they are entities with components.

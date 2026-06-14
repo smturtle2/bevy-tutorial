@@ -15,6 +15,8 @@
 cargo run --example 13_animation_state
 ```
 
+![애니메이션 상태 예제는 Attack 상태, 아틀라스 3번 프레임, 플레이어 애니메이션 시스템이 사용하는 스프라이트 시트 프레임들을 보여줍니다.](../../assets/screenshots/ch13-animation-attack.png)
+
 이 장의 계약은 애니메이션을 단순한 프레임 번호가 아니라 상태 기계로 다루는 것입니다. 플레이어는 `Idle`, `Run`, `Attack` 중 하나의 상태를 갖고, 상태별로 텍스처 아틀라스 인덱스를 선택합니다.
 
 ## 핵심 ECS 계약

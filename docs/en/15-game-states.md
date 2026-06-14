@@ -15,6 +15,8 @@ Run:
 cargo run --example 15_game_states
 ```
 
+![The game state example starts in Menu, where only menu input systems are active until the player starts a run.](../../assets/screenshots/ch15-game-state-menu.png)
+
 ## Contract
 
 Game states control which systems are allowed to run.

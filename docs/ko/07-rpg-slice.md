@@ -15,7 +15,7 @@
 cargo run --example 07_rpg_slice
 ```
 
-![RPG 조각 미리보기](../../assets/screenshots/rpg-slice-preview.png)
+![RPG 기초 조각은 플레이어, 적, 수집 아이템, 경기장 경계, 체력, 점수를 하나의 작은 루프로 보여줍니다.](../../assets/screenshots/ch07-rpg-slice.png)
 
 이 기초 예제는 앞에서 배운 조각들을 하나의 작은 게임 루프로 합칩니다.
 

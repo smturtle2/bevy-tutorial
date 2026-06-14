@@ -116,6 +116,8 @@ Query    = 이미 존재하는 컴포넌트 값을 읽거나 수정한다
 cargo run --example 02_spawn_sprite
 ```
 
+![두 번째 앱 모델 예제는 Camera2d, Sprite, Transform으로 파란 스프라이트 엔티티를 렌더링합니다.](../../assets/screenshots/ch02-spawn-sprite.png)
+
 setup 시스템은 엔티티 두 개를 만듭니다.
 
 ```rust

@@ -15,6 +15,8 @@
 cargo run --example 11_sprite_assets
 ```
 
+![스프라이트 에셋 예제는 AssetServer 핸들로 이미지 파일에서 로드된 플레이어, 적, 보석을 보여줍니다.](../../assets/screenshots/ch11-sprite-assets.png)
+
 이 장의 계약은 파일 경로 문자열을 스프라이트 컴포넌트에 직접 저장하지 않고, `AssetServer`가 돌려주는 `Handle<Image>`를 `Sprite`에 넣는 것입니다. 엔티티는 핸들을 들고 있고, Bevy의 에셋 시스템이 실제 이미지 로딩과 공유를 담당합니다.
 
 ## 핵심 ECS 계약

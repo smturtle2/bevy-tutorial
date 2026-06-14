@@ -440,26 +440,42 @@ img {
 
 .path-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .chapter-card {
   display: flex;
-  min-height: 156px;
+  min-height: 302px;
   flex-direction: column;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--paper);
-  padding: 14px;
   color: var(--ink);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .chapter-card:hover {
   border-color: #f5a886;
   color: var(--ink);
   transform: translateY(-1px);
+}
+
+.chapter-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid var(--line);
+  background: #0f141b;
+  object-fit: cover;
+}
+
+.chapter-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 14px;
 }
 
 .chapter-card__number {
@@ -499,9 +515,9 @@ img {
 
 .example-row {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 118px minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: center;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--paper);
@@ -509,12 +525,12 @@ img {
 }
 
 .example-row img {
-  width: 52px;
-  height: 52px;
+  width: 118px;
+  aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   object-fit: cover;
-  image-rendering: pixelated;
+  background: #0f141b;
 }
 
 .example-row code,
@@ -1027,7 +1043,7 @@ img {
 
 @media (max-width: 1120px) {
   .path-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .doc-layout {
@@ -1077,7 +1093,7 @@ img {
   }
 
   .path-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .doc-layout {
@@ -1139,7 +1155,7 @@ img {
   }
 
   .path-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .section-head {

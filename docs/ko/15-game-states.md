@@ -15,6 +15,8 @@
 cargo run --example 15_game_states
 ```
 
+![게임 상태 예제는 Menu에서 시작하며, 플레이어가 run을 시작하기 전에는 메뉴 입력 시스템만 활성화됩니다.](../../assets/screenshots/ch15-game-state-menu.png)
+
 이 장의 계약은 메뉴, 플레이, 일시정지, 게임오버를 하나의 enum 상태로 관리하는 것입니다. 상태는 어떤 시스템이 실행되는지, 어떤 UI가 생성/정리되는지 결정합니다.
 
 ## 핵심 ECS 계약

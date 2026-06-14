@@ -15,6 +15,8 @@ Run:
 cargo run --example 16_save_load_progress
 ```
 
+![The save/load progress example shows durable Progress data, hotkeys, and the target JSON save path on screen.](../../assets/screenshots/ch16-save-load-progress.png)
+
 The save file is written to:
 
 ```text

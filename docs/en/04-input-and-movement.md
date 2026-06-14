@@ -19,6 +19,8 @@ Run:
 cargo run --example 03_player_input
 ```
 
+![The direct input example shows the player moving through a trail of Transform positions.](../../assets/screenshots/ch03-player-input.png)
+
 Use WASD or arrow keys. The blue square should move.
 
 The example introduces a marker component and a resource:
@@ -150,6 +152,8 @@ Run:
 ```sh
 cargo run --example 04_velocity_body
 ```
+
+![The velocity refactor shows input writing Velocity while the movement system writes Transform.](../../assets/screenshots/ch04-velocity-body.png)
 
 The controls feel similar, but the data model is different:
 

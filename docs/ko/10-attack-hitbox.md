@@ -15,6 +15,8 @@
 cargo run --example 10_attack_hitbox
 ```
 
+![공격 히트박스 예제는 플레이어, 적, slash 스프라이트, 플레이어 앞에 생성된 반투명 AttackHitbox Body를 보여줍니다.](../../assets/screenshots/ch10-attack-hitbox.png)
+
 이 장의 계약은 공격을 즉시 데미지 함수로 처리하지 않고, 짧게 존재하는 히트박스 엔티티로 표현하는 것입니다. 공격도 ECS 데이터가 되면 시각 효과, 충돌, 수명, 데미지를 분리해서 다룰 수 있습니다.
 
 ## 핵심 ECS 계약

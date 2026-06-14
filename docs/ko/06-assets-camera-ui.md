@@ -21,6 +21,8 @@
 cargo run --example 06_assets_camera_ui
 ```
 
+![에셋, 카메라, UI 예제는 이미지 스프라이트, 월드 공간 HUD 라벨, 카메라가 따라가는 장면을 보여줍니다.](../../assets/screenshots/ch06-assets-camera-ui.png)
+
 이미지 기반 플레이어, 큰 배경 사각형, 그리고 플레이어 위를 따라다니며 위치를 표시하는 텍스트가 보여야 합니다.
 
 ## 둘러보기: `06_assets_camera_ui`

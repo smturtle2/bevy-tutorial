@@ -15,6 +15,8 @@
 cargo run --example 05_plugins_sets
 ```
 
+![플러그인과 시스템 세트 예제는 GamePlugin, PlayerPlugin, BodyPlugin과 실행 순서를 보이게 둔 채 같은 플레이어 동작을 렌더링합니다.](../../assets/screenshots/ch05-plugins-sets.png)
+
 이 예제는 `04_velocity_body`처럼 동작하지만, 코드는 spawn 번들, 플러그인, 이름 있는 system set 중심으로 재구성되어 있습니다. 동작은 일부러 익숙하게 유지해서 구조에 집중할 수 있게 합니다.
 
 ## Bundle을 쓰는 이유

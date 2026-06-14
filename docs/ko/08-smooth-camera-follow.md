@@ -15,6 +15,8 @@
 cargo run --example 08_smooth_camera_follow
 ```
 
+![부드러운 카메라 추적 예제는 큰 그리드 월드 안에서 카메라가 대상 엔티티를 향해 보간되는 장면을 보여줍니다.](../../assets/screenshots/ch08-smooth-camera-follow.png)
+
 이 장의 계약은 간단합니다. 플레이어는 입력으로 움직이고, 카메라는 플레이어 엔티티를 직접 소유하지 않고 `Entity` ID로 참조합니다. 카메라 시스템은 그 ID로 대상 `Transform`을 조회한 뒤 현재 위치에서 목표 위치로 조금씩 보간합니다.
 
 ## 핵심 ECS 계약

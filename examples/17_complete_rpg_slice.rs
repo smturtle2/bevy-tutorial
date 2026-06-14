@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 
 use bevy::prelude::*;
+use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
 use serde::{Deserialize, Serialize};
 
 const SAVE_PATH: &str = "target/tutorial-save/complete-progress.json";
@@ -392,6 +393,7 @@ fn main() {
         .add_systems(OnEnter(GameState::GameOver), enter_game_over)
         .add_systems(OnExit(GameState::GameOver), cleanup_entities::<GameOverUi>)
         .add_systems(Update, menu_input.run_if(in_state(GameState::Menu)))
+        .add_systems(Update, start_capture_run.run_if(in_state(GameState::Menu)))
         .add_systems(Update, paused_input.run_if(in_state(GameState::Paused)))
         .add_systems(
             Update,
@@ -446,6 +448,7 @@ fn main() {
             Update,
             (
                 save_load_hotkeys,
+                setup_capture_showcase,
                 update_health_ui,
                 update_score_ui,
                 update_wave_ui,
@@ -514,6 +517,24 @@ fn menu_input(
         start_run(&mut commands, &assets, &progress, &mut stats, &mut spawner);
         next_state.set(GameState::Playing);
     }
+}
+
+fn start_capture_run(
+    mut done: Local<bool>,
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    progress: Res<Progress>,
+    mut stats: ResMut<RunStats>,
+    mut spawner: ResMut<WaveSpawner>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if *done || !tutorial_capture_enabled() {
+        return;
+    }
+    *done = true;
+
+    start_run(&mut commands, &assets, &progress, &mut stats, &mut spawner);
+    next_state.set(GameState::Playing);
 }
 
 fn spawn_pause_ui(mut commands: Commands) {
@@ -627,6 +648,59 @@ fn start_run(
     ] {
         commands.spawn(CollectibleBundle::new(position, assets));
     }
+}
+
+fn setup_capture_showcase(
+    mut done: Local<bool>,
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    mut stats: ResMut<RunStats>,
+    mut spawner: ResMut<WaveSpawner>,
+    mut save_status: ResMut<SaveStatus>,
+    player: Single<(&mut Transform, &mut Facing, &mut PlayerAnimation), With<Player>>,
+) {
+    if *done || !tutorial_capture_enabled() {
+        return;
+    }
+    *done = true;
+
+    stats.score = 40;
+    stats.wave = 2;
+    spawner.wave = 2;
+    spawner.remaining_to_spawn = 2;
+    save_status.0 = "Progress loaded for tutorial capture".to_string();
+
+    let (mut player_transform, mut facing, mut animation) = player.into_inner();
+    player_transform.translation = Vec3::new(-80.0, -40.0, 3.0);
+    facing.0 = Vec2::X;
+    animation.state = PlayerAnimState::Attack;
+    animation.attack_timer = Timer::from_seconds(30.0, TimerMode::Once);
+
+    for position in [
+        Vec3::new(-210.0, 130.0, 3.0),
+        Vec3::new(210.0, -95.0, 3.0),
+        Vec3::new(330.0, 165.0, 3.0),
+    ] {
+        commands.spawn(EnemyBundle::new(position, 2, &assets));
+    }
+
+    let hitbox_position = player_transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
+    commands.spawn((
+        GameplayEntity,
+        AttackHitbox {
+            lifetime: Timer::from_seconds(30.0, TimerMode::Once),
+            damage: 0,
+        },
+        Body {
+            half_size: HITBOX_SIZE / 2.0,
+        },
+        Sprite::from_image(assets.slash.clone()),
+        Transform {
+            translation: hitbox_position,
+            rotation: Quat::from_rotation_z(facing.0.y.atan2(facing.0.x)),
+            ..default()
+        },
+    ));
 }
 
 fn player_input(

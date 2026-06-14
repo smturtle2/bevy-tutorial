@@ -15,6 +15,8 @@ Run:
 cargo run --example 05_plugins_sets
 ```
 
+![The plugin and system-set example renders the same player behavior with GamePlugin, PlayerPlugin, BodyPlugin, and ordered sets visible.](../../assets/screenshots/ch05-plugins-sets.png)
+
 This example behaves like `04_velocity_body`, but the code is reorganized around spawn bundles, plugins, and named system sets. The behavior is intentionally familiar so you can focus on structure.
 
 ## Why Bundles

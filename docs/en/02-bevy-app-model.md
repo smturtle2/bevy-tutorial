@@ -116,6 +116,8 @@ Run:
 cargo run --example 02_spawn_sprite
 ```
 
+![The second app model example renders a blue sprite entity through a Camera2d, Sprite, and Transform.](../../assets/screenshots/ch02-spawn-sprite.png)
+
 The setup system creates two entities:
 
 ```rust

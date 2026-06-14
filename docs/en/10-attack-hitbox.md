@@ -15,6 +15,8 @@ Run:
 cargo run --example 10_attack_hitbox
 ```
 
+![The attack hitbox example shows the player, enemies, slash sprite, and translucent AttackHitbox Body spawned in front of the player.](../../assets/screenshots/ch10-attack-hitbox.png)
+
 ## Contract
 
 An attack is not just a sprite. It is a short-lived entity with collision data.

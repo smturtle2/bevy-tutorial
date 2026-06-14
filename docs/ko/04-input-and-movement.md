@@ -19,6 +19,8 @@
 cargo run --example 03_player_input
 ```
 
+![직접 입력 예제는 Transform 위치가 바뀌며 플레이어가 이동하는 흐름을 보여줍니다.](../../assets/screenshots/ch03-player-input.png)
+
 WASD나 방향키를 사용하세요. 파란 사각형이 움직여야 합니다.
 
 이 예제는 marker component와 resource를 도입합니다.
@@ -150,6 +152,8 @@ keyboard -> Transform
 ```sh
 cargo run --example 04_velocity_body
 ```
+
+![Velocity 리팩터링 예제는 입력 시스템이 Velocity를 쓰고 이동 시스템이 Transform을 쓰는 구조를 보여줍니다.](../../assets/screenshots/ch04-velocity-body.png)
 
 조작감은 비슷하지만 데이터 모델이 다릅니다.
 

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_tutorial::tutorial_capture::tutorial_capture_enabled;
 
 const PLAYER_SPEED: f32 = 280.0;
 const PLAYER_SIZE: Vec2 = Vec2::splat(42.0);
@@ -122,6 +123,7 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_systems(Update, player_input.in_set(GameSet::Input))
+        .add_systems(Update, setup_capture_attack_scene.in_set(GameSet::Input))
         .add_systems(Update, spawn_attack_hitbox.in_set(GameSet::Input))
         .add_systems(Update, move_bodies.in_set(GameSet::Movement))
         .add_systems(
@@ -154,6 +156,59 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Node {
             position_type: PositionType::Absolute,
             top: px(16),
+            left: px(16),
+            ..default()
+        },
+    ));
+}
+
+fn setup_capture_attack_scene(
+    mut done: Local<bool>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    player: Single<(&mut Transform, &mut Facing), With<Player>>,
+    mut enemies: Query<&mut Transform, (With<Enemy>, Without<Player>)>,
+) {
+    if *done || !tutorial_capture_enabled() {
+        return;
+    }
+    *done = true;
+
+    let (mut player_transform, mut facing) = player.into_inner();
+    player_transform.translation = Vec3::new(-165.0, 0.0, 2.0);
+    facing.0 = Vec2::X;
+
+    for (index, mut enemy_transform) in enemies.iter_mut().enumerate() {
+        enemy_transform.translation = match index {
+            0 => Vec3::new(-28.0, 0.0, 2.0),
+            1 => Vec3::new(150.0, 92.0, 2.0),
+            _ => Vec3::new(150.0, -92.0, 2.0),
+        };
+    }
+
+    let position = player_transform.translation + (facing.0 * HITBOX_DISTANCE).extend(1.0);
+    commands.spawn((
+        Sprite::from_color(Color::srgba(1.0, 0.82, 0.25, 0.34), HITBOX_SIZE),
+        Transform::from_xyz(position.x, position.y, 1.4),
+    ));
+    commands.spawn((
+        AttackHitbox {
+            lifetime: Timer::from_seconds(30.0, TimerMode::Once),
+            damage: 0,
+        },
+        Body {
+            half_size: HITBOX_SIZE / 2.0,
+        },
+        Sprite::from_image(asset_server.load("slash.png")),
+        Transform::from_xyz(position.x, position.y, 3.0),
+    ));
+    commands.spawn((
+        Text::new("Capture: slash sprite + AttackHitbox Body in front of the player"),
+        TextFont::from_font_size(22.0),
+        TextColor(Color::srgb(0.92, 0.95, 1.0)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(50),
             left: px(16),
             ..default()
         },

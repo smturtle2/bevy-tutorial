@@ -17,7 +17,7 @@ cargo run --example 17_complete_rpg_slice
 
 이 장의 계약은 앞 장들의 기능을 하나의 작동하는 작은 RPG 루프로 합치는 것입니다. 메뉴에서 시작하고, 플레이 중에는 이동, 적 웨이브, 공격, 수집, 벽 충돌, 카메라, 애니메이션, HUD, 저장이 같은 ECS 스케줄 안에서 협력합니다.
 
-![완성 RPG 조각 미리보기](../../assets/screenshots/complete-rpg-slice-preview.png)
+![완성 RPG 조각은 카메라 추적, 적 웨이브, 공격 히트박스, 스프라이트 애니메이션, 화면 고정 HUD, 맵 지오메트리, 진행 저장이 함께 동작하는 장면을 보여줍니다.](../../assets/screenshots/ch17-complete-rpg-gameplay.png)
 
 ## 핵심 ECS 계약
 

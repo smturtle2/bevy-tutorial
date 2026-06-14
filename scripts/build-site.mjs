@@ -34,6 +34,27 @@ const chapters = [
   chapter(17, "17-complete-rpg-slice", "Complete RPG Slice", "완성된 RPG 조각", "RPG Features", "RPG 기능", "cargo run --example 17_complete_rpg_slice", "Put the tutorial systems together into a complete small RPG slice.", "튜토리얼 시스템을 합쳐 완성된 작은 RPG 조각을 만듭니다."),
 ];
 
+const chapterThumbnails = {
+  "00-project-setup": "diagrams/rpg-feature-roadmap.png",
+  "01-rust-for-bevy": "diagrams/ecs-overview.png",
+  "02-bevy-app-model": "screenshots/ch02-spawn-sprite.png",
+  "03-ecs-fundamentals": "diagrams/ecs-overview.png",
+  "04-input-and-movement": "screenshots/ch04-velocity-body.png",
+  "05-bundles-plugins-sets": "screenshots/ch05-plugins-sets.png",
+  "06-assets-camera-ui": "screenshots/ch06-assets-camera-ui.png",
+  "07-rpg-slice": "screenshots/ch07-rpg-slice.png",
+  "08-smooth-camera-follow": "screenshots/ch08-smooth-camera-follow.png",
+  "09-enemy-waves": "screenshots/ch09-enemy-waves.png",
+  "10-attack-hitbox": "screenshots/ch10-attack-hitbox.png",
+  "11-sprite-assets": "screenshots/ch11-sprite-assets.png",
+  "12-screen-space-ui": "screenshots/ch12-screen-space-ui.png",
+  "13-animation-state": "screenshots/ch13-animation-attack.png",
+  "14-handmade-map-geometry": "screenshots/ch14-handmade-map.png",
+  "15-game-states": "screenshots/ch15-game-state-menu.png",
+  "16-save-load-progress": "screenshots/ch16-save-load-progress.png",
+  "17-complete-rpg-slice": "screenshots/ch17-complete-rpg-gameplay.png",
+};
+
 const copy = {
   en: {
     htmlLang: "en",
@@ -216,7 +237,7 @@ function renderNotFound(assetTags) {
 
 function renderHome(lang, assetTags) {
   const t = copy[lang];
-  const heroImage = `${base}assets/screenshots/complete-rpg-slice-preview.png`;
+  const heroImage = `${base}assets/screenshots/ch17-complete-rpg-gameplay.png`;
   const features = [
     [asset("player.png"), lang === "en" ? "Hands-on learning" : "직접 만드는 학습", lang === "en" ? "Build an RPG step by step with complete examples." : "완성 예제로 RPG를 단계별로 만듭니다."],
     [asset("enemy.png"), lang === "en" ? "Bevy patterns" : "Bevy 패턴", lang === "en" ? "Learn ECS, plugins, states, assets, UI, and saving." : "ECS, 플러그인, 상태, 에셋, UI, 저장을 배웁니다."],
@@ -286,7 +307,7 @@ function renderHome(lang, assetTags) {
           </div>
         </div>
         <div class="examples-grid">
-          ${chapters.slice(1).map((item, index) => renderExampleRow(lang, item, index)).join("")}
+          ${chapters.slice(1).map((item) => renderExampleRow(lang, item)).join("")}
         </div>
       </section>
 
@@ -473,19 +494,21 @@ function renderChapterList(lang, currentSlug) {
 function renderChapterCard(lang, item) {
   return `
     <a class="chapter-card" href="${pageUrl(lang, item.slug)}">
-      <span class="chapter-card__number">${pad(item.number)}</span>
-      <h3>${escapeHtml(item.title[lang])}</h3>
-      <p>${escapeHtml(item.summary[lang])}</p>
-      <small>${escapeHtml(item.phase[lang])}</small>
+      <img class="chapter-card__image" src="${chapterThumbnail(item)}" alt="" />
+      <span class="chapter-card__body">
+        <span class="chapter-card__number">${pad(item.number)}</span>
+        <h3>${escapeHtml(item.title[lang])}</h3>
+        <p>${escapeHtml(item.summary[lang])}</p>
+        <small>${escapeHtml(item.phase[lang])}</small>
+      </span>
     </a>
   `;
 }
 
-function renderExampleRow(lang, item, index) {
-  const image = index % 4 === 0 ? "player.png" : index % 4 === 1 ? "enemy.png" : index % 4 === 2 ? "slash.png" : "gem.png";
+function renderExampleRow(lang, item) {
   return `
     <a class="example-row" href="${pageUrl(lang, item.slug)}">
-      <img src="${asset(image)}" alt="" />
+      <img src="${chapterThumbnail(item)}" alt="" />
       <span>
         <strong>${pad(item.number)}. ${escapeHtml(item.title[lang])}</strong><br />
         <code>${escapeHtml(item.command)}</code>
@@ -612,6 +635,10 @@ function pageUrl(lang, slug = "") {
 
 function asset(name) {
   return `${base}assets/${name}`;
+}
+
+function chapterThumbnail(item) {
+  return asset(chapterThumbnails[item.slug] ?? "screenshots/ch17-complete-rpg-gameplay.png");
 }
 
 function writeFile(relativePath, content) {

@@ -15,6 +15,8 @@ Run:
 cargo run --example 13_animation_state
 ```
 
+![The animation state example shows the Attack state, atlas frame 3, and the sprite-sheet frames used by the player animation system.](../../assets/screenshots/ch13-animation-attack.png)
+
 ## Contract
 
 Animation is gameplay presentation state. It should be explicit data, not hidden in input code.
